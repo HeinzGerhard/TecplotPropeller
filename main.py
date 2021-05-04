@@ -1,10 +1,11 @@
 import logging
-import tkinter
 
+import tkinter
 from tkinter import filedialog as fd
 
 import os
 import numpy as np
+
 import tecplot
 from tecplot.exception import *
 from tecplot.constant import *
@@ -68,6 +69,27 @@ def convertData():
 
 
 def prepareScene():
+
+    tecplot.macro.execute_file('changePaperSize.mcr')
+
+    tecplot.active_frame().plot().frame.width = 14
+    tecplot.active_frame().plot().frame.height = 8
+    tecplot.active_frame().plot().frame.position=(0,0)
+    #tecplot.macro.execute_command('''$!PAGE
+    #                PAPERATTRIBUTES
+    #                    {
+    #                        SHOWGRID = NO
+    #                        PAPERSIZE = CUSTOM1
+    #                        PAPERSIZEINFO
+    #                        {
+    #                            CUSTOM1
+    #                                {
+    #                                    WIDTH = 14
+    #                                    HEIGHT = 8
+    #                                }
+    #                        }
+    #                    }''')
+
     # hide inlets
     i = 1
     while (i <= inletRegions):
@@ -280,9 +302,6 @@ def setupslices():
 
         # update axes limits to show data
         plot.view.fit()
-
-        tecplot.active_frame().plot().axes.y_axis(0).min = 95000
-        tecplot.active_frame().plot().axes.y_axis(0).max = 10500
         tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
         tecplot.active_frame().plot().axes.y_axis(0).title.text = 'Pressure [Pa]]'
         tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
