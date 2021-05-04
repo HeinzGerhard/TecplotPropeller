@@ -1,3 +1,14 @@
+# Author Nicolas Mueller
+#
+# This code is meant to posprocess the data from the propeller simulations, to extract the thust and the moment, as well
+# as pictures and pressure slices
+#
+#
+# Usage:
+#
+# Start the program and a File Dialog will open. Select the results file from the simulation (either sol.dat or sol.plt)
+#
+
 import logging
 
 import tkinter
@@ -70,27 +81,14 @@ def convertData():
 
 def prepareScene():
 
+    # Change Aspect Ratio
     tecplot.macro.execute_file('changePaperSize.mcr')
 
     tecplot.active_frame().plot().frame.width = 14
     tecplot.active_frame().plot().frame.height = 8
     tecplot.active_frame().plot().frame.position=(0,0)
-    #tecplot.macro.execute_command('''$!PAGE
-    #                PAPERATTRIBUTES
-    #                    {
-    #                        SHOWGRID = NO
-    #                        PAPERSIZE = CUSTOM1
-    #                        PAPERSIZEINFO
-    #                        {
-    #                            CUSTOM1
-    #                                {
-    #                                    WIDTH = 14
-    #                                    HEIGHT = 8
-    #                                }
-    #                        }
-    #                    }''')
 
-    # hide inlets
+    # Hide Inlets
     i = 1
     while (i <= inletRegions):
         plot.fieldmaps(i).show = False
@@ -248,7 +246,7 @@ def savePicture(name):
         plot.view.theta = view[6]
         plot.view.alpha = view[7]
 
-        tecplot.export.save_png(path + '\\PostPro\\' + name + '\\' + name + '_' + view[0] + '.png',
+        tecplot.export.save_png(path + '\\PostPro\\' + name + '\\' + name + '_' + view[0] + ".png",
                                 width=1920,
                                 region=ExportRegion.AllFrames,
                                 supersample=1,
@@ -336,7 +334,7 @@ saveViews()
 setupslices()
 
 # Save if not alreadt plt
-if not filename.endswith('.plt'):
+if not file.endswith('.plt'):
     tecplot.data.save_tecplot_plt(path + '\\soln.plt',
                                   include_text=False,
                                   include_geom=False,
