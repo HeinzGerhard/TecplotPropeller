@@ -47,7 +47,7 @@ views = [
     ["Bottom", 0.28, -0.13837, -0.0118782, 10, 0.00, 0.00, 0.00],
     ["Top", 0.28, -0.13837, -0.00469803, -27.2985, 180.00, -180.00, 0.00],
     ["ISO1", 0.209359, -23.5632, 12.2607, -6.29767, 103.31, 117.56, -176.19],
-    ["ISO2", 0.174625, -22.0291, -13.0495, -6.29767, 118.63,113.39, 153.57]
+    ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63,113.39, 153.57]
 ]
 
 radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
@@ -63,23 +63,51 @@ dropletdatFiles = []
 droplettecplotFiles = []
 icedatFiles = []
 icetecplotFiles = []
-
+icegridFiles = []
+hasinitGrid = False
 folder = "PostPro"
 
 def searchFile(Folder):
+
+    global fensapSolutions
+    global dropletSolutions
+    global iceSolutions
+    global iceGrids
+    global grids
+    global fensaptecplotFiles
+    global fensapdatFiles
+    global dropletdatFiles
+    global droplettecplotFiles
+    global icedatFiles
+    global icetecplotFiles
+    global icegridFiles
+    global hasinitGrid
+    fensapSolutions = []
+    dropletSolutions = []
+    iceSolutions = []
+    iceGrids = []
+    grids = []
+    fensaptecplotFiles = []
+    fensapdatFiles = []
+    dropletdatFiles = []
+    droplettecplotFiles = []
+    icedatFiles = []
+    icetecplotFiles = []
+    icegridFiles = []
+    hasinitGrid = False
     for root, dirs, files in os.walk(Folder):
         print('Looking in:',root)
         for Files in files:
-            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp"):
+            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp")and not Files.endswith(".plt"):
                 fensapSolutions.append(Files)
-            if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp"):
+            if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 dropletSolutions.append(Files)
-            if Files.startswith("swimsol.ice."):
+            if Files.startswith("swimsol.ice.")and not Files.endswith(".dat") and not Files.endswith(".plt"):
                 iceSolutions.append(Files)
             if Files.startswith("ice.ice."):
                 iceGrids.append(Files)
             if Files.startswith("grid.ice."):
-                grids.append(Folder + "\\" + Files)
+                grids.append(Files)
             if Files.endswith("soln.plt"):
                 fensaptecplotFiles.append(Files)
             if Files.endswith("drop.plt"):
@@ -88,32 +116,41 @@ def searchFile(Folder):
                 fensapdatFiles.append(Files)
             if Files.startswith("droplet.drop.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
                 dropletdatFiles.append(Files)
-            if Files.startswith("swimsol.ice.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
+            if Files.startswith("swimsol.ice.") and  Files.endswith(".dat") and not Files.endswith(".plt"):
                 icedatFiles.append(Files)
             if Files.startswith("swimsol.ice.") and Files.endswith(".plt") and not Files.endswith(".disp"):
                 icetecplotFiles.append(Files)
+            if Files.startswith("ice.grid.ice"):
+                icegridFiles.append(Files)
+            if Files.startswith("Initialgrid.grid"):
+                hasinitGrid = True
 
 
 def createdatfile():
-    firstGrid = fd.askopenfilename()
-    grids.insert(0, firstGrid)
+    if not hasinitGrid:
+        firstGrid = fd.askopenfilename()
+        os.link(firstGrid, path + "\\Initialgrid.grid")
+    grids.insert(0, "Initialgrid.grid")
 
     for i in range(len(fensapSolutions)):
         if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat"):
             print("Convert " + fensapSolutions[i])
-            str = pathToFensap + "\\bin\\nti2tecplot.exe SOLN " + grids[i] + " " + path + "/" + fensapSolutions[i]
-            #os.system(str)
+            str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i] + "\" \"" + fensapSolutions[i] + "\""
+            os.system(str)
             print(str)
-            subprocess.call(str)
-            os.system("& \"" + pathToFensap + "\\bin\\nti2tecplot.exe SOLN " + grids[i] + " " + path + "/" + fensapSolutions[i] + "\"")
             fensapdatFiles.append(fensapSolutions[i] + ".dat")
     for i in range(len(dropletSolutions)):
         if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat"):
             print("Convert " + dropletSolutions[i])
-            str = "\"" + pathToFensap + "\\bin\\nti2tecplot.exe DROPLET " + grids[i] + " " + path + "/" + dropletSolutions[i] + "\""
+            str = "CreateDatFilesDrop.bat \"" + path + "\" \"" + grids[i] + "\" \"" + dropletSolutions[i] + "\""
             os.system(str)
-            #os.system("\"" +pathToFensap + "\\bin\\nti2tecplot.exe DROPLET " + grids[i] + " " + path + "/" + dropletSolutions[i] + "\"")
             dropletdatFiles.append(dropletSolutions[i] + ".dat")
+    for i in range(len(iceSolutions)):
+        if not icedatFiles.__contains__(iceSolutions[i] + ".dat"):
+            print("Convert " + iceSolutions[i])
+            str = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
+            os.system(str)
+            icetecplotFiles.append(iceSolutions[i] + ".dat")
 
 
 def createcplotFile():
@@ -205,6 +242,7 @@ def mainRun():
         walltemperature()
         filmthickness()
 
+
 def convertData():
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SetFieldVariables ConvectionVarsAreMomentum='F' UVarNum=6 VVarNum=7 WVarNum=8 ID1='Density' Variable1=4 ID2='NotUsed' Variable2=0")
@@ -230,7 +268,7 @@ def convertData():
     tecplot.data.operate.execute_equation(equation='{mzt} = X * {tauy} - Y * {taux}')
     tecplot.data.operate.execute_equation(
         equation='{ShearStress} = sqrt({SF1-shear stress (Pa); Shear}**2+ {SF2-shear stress (Pa)}**2+ {SF3-shear stress (Pa)}**2)')
-    tecplot.data.operate.execute_equation(equation='{rot} = -' + str(rotationRate) + '/60')
+    tecplot.data.operate.execute_equation(equation='{rot} = ' + str(rotationRate) + '/60')
     tecplot.data.operate.execute_equation(equation='{vx} = {V1-velocity (m/s); Velocity} - 2 * 3.14159265 *  Y * {rot}')
     tecplot.data.operate.execute_equation(equation='{vy} = {V2-velocity (m/s)} + 2 * 3.14159265 *  X * {rot}')
     tecplot.data.operate.execute_equation(equation='{vmag} =  sqrt({vx}**2+ {vy}**2+ {V3-velocity (m/s)}**2)')
@@ -307,7 +345,7 @@ def collection():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("CollectionEfficiency")
+    savePicture("11_CollectionEfficiency")
 
 
 def dropletLWC():
@@ -322,7 +360,7 @@ def dropletLWC():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("DropletLWC")
+    savePicture("12_DropletLWC")
 
 
 def masscaught():
@@ -337,7 +375,7 @@ def masscaught():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("MassCaught")
+    savePicture("22_MassCaught")
 
 
 def icethickness():
@@ -352,7 +390,7 @@ def icethickness():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("Icethickness")
+    savePicture("21_Icethickness")
 
 
 def walltemperature():
@@ -366,7 +404,7 @@ def walltemperature():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("Temperature")
+    savePicture("23_Temperature")
 
 
 def filmthickness():
@@ -380,7 +418,8 @@ def filmthickness():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("FilmThickness")
+    savePicture("24_FilmThickness")
+
 
 def saveData():
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
@@ -414,6 +453,9 @@ def saveViews():
     pressuretz()
     pressurez()
     momentz()
+    mesh()
+    meshslices()
+    IsoTurb()
 
 
 def density():
@@ -427,8 +469,37 @@ def density():
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
     plot.contour(0).colormap_name = 'Large Rainbow'
-    savePicture("Density")
+    savePicture("02_Density")
+    slices("42_Density")
 
+
+def mesh():
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = True
+    savePicture("09_Mesh")
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+
+
+def IsoTurb():
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = False
+    plot.show_isosurfaces=False
+    plot.show_isosurfaces=True
+    plot.isosurface(0).isosurface_values[0]=2e-05
+    plot.isosurface(0).contour.show=True
+    plot.isosurface(0).contour.show=False
+    plot.isosurface(0).shade.show=False
+    plot.isosurface(0).shade.show=True
+    plot.isosurface(0).shade.color==Color.Red
+    savePicture("08_IsoTurb")
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+    plot.show_isosurfaces=False
 
 def pressure():
     plot.contour(0).variable_index = 4
@@ -440,7 +511,8 @@ def pressure():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("Pressure")
+    savePicture("01_Pressure")
+    slices("41_Pressure")
 
 
 def velocity():
@@ -453,7 +525,8 @@ def velocity():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("Velocity")
+    savePicture("07_Velocity")
+    slices("43_Velocity")
 
 
 def shearstress():
@@ -466,7 +539,7 @@ def shearstress():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("ShearStress")
+    savePicture("03_ShearStress")
 
 
 def pressuretz():
@@ -479,7 +552,7 @@ def pressuretz():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("PressureTZ")
+    savePicture("04_PressureTZ")
 
 
 def pressurez():
@@ -492,7 +565,7 @@ def pressurez():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("PressureZ")
+    savePicture("05_PressureZ")
 
 
 def momentz():
@@ -505,7 +578,84 @@ def momentz():
     plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
-    savePicture("MomentZ")
+    savePicture("06_MomentZ")
+
+
+def slices(name):
+
+    # Turn on slice and get handle to slice object
+    plot.show_slices = True
+    plot.show_contour = False
+    slice_0 = plot.slice(0)
+
+    slice_0.effects.use_translucency = False
+
+    # Setup 4 evenly spaced slices
+    slice_0.show_primary_slice = True
+    slice_0.show_start_and_end_slices = False
+    slice_0.show_intermediate_slices = False
+    slice_0.orientation = SliceSurface.XPlanes
+    # Turn on contours of X Velocity on the slice
+    slice_0.contour.show = True
+
+    plot.view.width = 0.144183
+    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.psi = 90.00
+    plot.view.theta = -90.00
+    plot.view.alpha = 180.00
+
+    try:
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\' + name )
+    except:
+        pass
+    for radius in radii:
+
+        text = frame.add_text(str(radius), (50, 95))
+        plot.slice(0).origin.x = radiusPropeller * radius / 100
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+name+'\\' + str(radius) + '.png', 1920, supersample=3)
+        text.text_string = ""
+
+    plot.show_slices = False
+
+
+def meshslices():
+
+    # Turn on slice and get handle to slice object
+    plot.show_slices = True
+    plot.show_contour = False
+    slice_0 = plot.slice(0)
+
+    slice_0.effects.use_translucency = False
+
+    # Setup 4 evenly spaced slices
+    slice_0.show_primary_slice = True
+    slice_0.show_start_and_end_slices = False
+    slice_0.show_intermediate_slices = False
+    slice_0.orientation = SliceSurface.XPlanes
+    # Turn on contours of X Velocity on the slice
+    slice_0.contour.show=False
+    slice_0.mesh.show=True
+
+    plot.view.width = 0.144183
+    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.psi = 90.00
+    plot.view.theta = -90.00
+    plot.view.alpha = 180.00
+
+    try:
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\49_Mesh' )
+    except:
+        pass
+    for radius in radii:
+
+        text = frame.add_text(str(radius), (50, 95))
+        plot.slice(0).origin.x = radiusPropeller * radius / 100
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\49_Mesh\\' + str(radius) + '.png', 1920, supersample=3)
+        text.text_string = ""
+
+    plot.show_slices = False
+    slice_0.contour.show=True
+    slice_0.mesh.show=False
 
 
 def savePicture(name):
@@ -520,7 +670,7 @@ def savePicture(name):
         plot.view.theta = view[6]
         plot.view.alpha = view[7]
 
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + name + '_' + view[0] + ".png",
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + view[0] + ".png",
                                 width=1920,
                                 region=ExportRegion.AllFrames,
                                 supersample=1,
@@ -589,7 +739,7 @@ def setupslices():
         plot.axes.y_axis(0).max = 105000
 
         # export image of pressure coefficient as a function of x/c
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\Slices\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\08_Slices\\' + str(radius) + '.png', 1920, supersample=3)
         text.text_string = ""
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
@@ -604,7 +754,8 @@ path = fd.askdirectory()
 
 
 searchFile(path)
-#createdatfile()
+createdatfile()
+searchFile(path)
 createcplotFile()
 
 mainRun()
