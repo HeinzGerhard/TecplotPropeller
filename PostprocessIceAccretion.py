@@ -10,7 +10,6 @@
 #
 
 import logging
-import subprocess
 import tkinter
 from tkinter import filedialog as fd
 
@@ -33,7 +32,6 @@ if '-c' in sys.argv:
     tecplot.session.connect()
 
 
-pathToFensap = "C:\\Program Files\\ANSYS Inc\\v211\\fensapice"
 turbVariables = 1
 eidValues = 4
 wallRegions = 5
@@ -47,7 +45,7 @@ views = [
     ["Bottom", 0.28, -0.13837, -0.0118782, 10, 0.00, 0.00, 0.00],
     ["Top", 0.28, -0.13837, -0.00469803, -27.2985, 180.00, -180.00, 0.00],
     ["ISO1", 0.209359, -23.5632, 12.2607, -6.29767, 103.31, 117.56, -176.19],
-    ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63,113.39, 153.57]
+    ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63, 113.39, 153.57]
 ]
 
 radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
@@ -96,7 +94,7 @@ def searchFile(Folder):
     icegridFiles = []
     hasinitGrid = False
     for root, dirs, files in os.walk(Folder):
-        print('Looking in:',root)
+        # print('Looking in:',root)
         for Files in files:
             if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp")and not Files.endswith(".plt"):
                 fensapSolutions.append(Files)
@@ -104,7 +102,7 @@ def searchFile(Folder):
                 dropletSolutions.append(Files)
             if Files.startswith("swimsol.ice.")and not Files.endswith(".dat") and not Files.endswith(".plt"):
                 iceSolutions.append(Files)
-            if Files.startswith("ice.ice."):
+            if Files.startswith("ice.ice.") and Files.endswith(".stl"):
                 iceGrids.append(Files)
             if Files.startswith("grid.ice."):
                 grids.append(Files)
@@ -133,20 +131,20 @@ def createdatfile():
     grids.insert(0, "Initialgrid.grid")
 
     for i in range(len(fensapSolutions)):
-        if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat"):
+        if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") and not fensaptecplotFiles.__contains__(fensapSolutions[i]+".soln.plt"):
             print("Convert " + fensapSolutions[i])
             str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i] + "\" \"" + fensapSolutions[i] + "\""
             os.system(str)
             print(str)
             fensapdatFiles.append(fensapSolutions[i] + ".dat")
     for i in range(len(dropletSolutions)):
-        if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat"):
+        if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat") and not droplettecplotFiles.__contains__(dropletSolutions[i] + ".drop.plt") :
             print("Convert " + dropletSolutions[i])
             str = "CreateDatFilesDrop.bat \"" + path + "\" \"" + grids[i] + "\" \"" + dropletSolutions[i] + "\""
             os.system(str)
             dropletdatFiles.append(dropletSolutions[i] + ".dat")
     for i in range(len(iceSolutions)):
-        if not icedatFiles.__contains__(iceSolutions[i] + ".dat"):
+        if not icedatFiles.__contains__(iceSolutions[i] + ".dat") and not icetecplotFiles.__contains__(iceSolutions[i] + ".ice.plt"):
             print("Convert " + iceSolutions[i])
             str = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
             os.system(str)
@@ -210,7 +208,7 @@ def mainRun():
         saveData()
         prepareScene()
         saveViews()
-        #setupslices()
+        setupslices()
 
     for File in droplettecplotFiles:
         try:
@@ -241,6 +239,65 @@ def mainRun():
         icethickness()
         walltemperature()
         filmthickness()
+
+    for File in iceGrids:
+        try:
+            folder = "PostPro"+ str(File.split(".")[2])
+        except:
+            pass
+        try:
+            os.mkdir(path.replace("/","\\") + "\\" + folder)
+        except:
+            pass
+
+        dataset = tecplot.data.load_tecplot(path + "\\" + fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_stl(path + "\\" + File)
+        icescenes()
+
+
+def icescenes():
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.fieldmaps(wallRegions+inletRegions+3).shade.color = Color.Red
+    savePicture("25_Ice")
+    plot.show_contour = False
+    plot.show_shade = False
+    slice_0 = plot.slice(0)
+    slice_0.slice_source=SliceSource.SurfaceZones
+    slice_0.edge.show=True
+    slice_0.contour.show=False
+    plot.show_shade=False
+    slice_0.edge.line_thickness=0.5
+    # Turn on slice and get handle to slice object
+    plot.show_slices = True
+
+    slice_0.effects.use_translucency = False
+
+    # Setup 4 evenly spaced slices
+    slice_0.show_primary_slice = True
+    slice_0.show_start_and_end_slices = False
+    slice_0.show_intermediate_slices = False
+    slice_0.orientation = SliceSurface.XPlanes
+    # Turn on contours of X Velocity on the slice
+
+    plot.view.width = 0.1
+    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.psi = 90.00
+    plot.view.theta = -90.00
+    plot.view.alpha = 180.00
+
+    try:
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\45_IceContour')
+    except:
+        pass
+    for radius in radii:
+
+        text = frame.add_text(str(radius), (50, 95))
+        plot.slice(0).origin.x = radiusPropeller * radius / 100
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', 1920, supersample=3)
+        text.text_string = ""
+
+    plot.show_slices = False
 
 
 def convertData():
@@ -303,6 +360,13 @@ def prepareScene():
       YVar = 2
       ZVar = 3''')
 
+    tecplot.macro.execute_command('''$!AxialDuplicate 
+      ZoneList =  [''' + str(1) + '-' + str(1) + ''']
+      Angle = 180
+      NumDuplicates = 1
+      XVar = 1
+      YVar = 2
+      ZVar = 3''')
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
@@ -461,7 +525,7 @@ def saveViews():
 def density():
     plot.contour(0).variable_index = 3
     plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(1.2, 1.3, 21))
+    plot.contour(0).levels.reset_levels(np.linspace(1.2, 1.4, 21))
     plot.show_contour = True
     plot.show_shade = False
     plot.contour(0).legend.vertical = False
@@ -484,6 +548,8 @@ def mesh():
 
 
 def IsoTurb():
+
+    plot.contour(0).variable= dataset.variable('turbulent viscosity (kg/m s)')
     plot.show_contour = False
     plot.show_shade = True
     plot.show_mesh = False
@@ -494,12 +560,13 @@ def IsoTurb():
     plot.isosurface(0).contour.show=False
     plot.isosurface(0).shade.show=False
     plot.isosurface(0).shade.show=True
-    plot.isosurface(0).shade.color==Color.Red
+    plot.isosurface(0).shade.color=Color.Red
     savePicture("08_IsoTurb")
     plot.show_contour = True
     plot.show_shade = False
     plot.show_mesh = False
     plot.show_isosurfaces=False
+
 
 def pressure():
     plot.contour(0).variable_index = 4
@@ -681,7 +748,7 @@ def setupslices():
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\Slices')
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\30_Slices')
     except:
         pass
     for radius in radii:
@@ -739,7 +806,7 @@ def setupslices():
         plot.axes.y_axis(0).max = 105000
 
         # export image of pressure coefficient as a function of x/c
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\08_Slices\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\30_Slices\\' + str(radius) + '.png', 1920, supersample=3)
         text.text_string = ""
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
