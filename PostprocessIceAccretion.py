@@ -33,11 +33,13 @@ if '-c' in sys.argv:
 
 
 turbVariables = 1
-eidValues = 4
-wallRegions = 5
+eidValues = 0#4
+wallRegions = 3#5
 inletRegions = 2
 rotationRate = 3500
 radiusPropeller = 21 * 0.0254 / 2
+
+picturewidth = 1920*2
 
 views = [
 
@@ -154,6 +156,7 @@ def createdatfile():
 def createcplotFile():
     for i in range(len(fensapdatFiles)):
         if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat",".soln.plt")):
+            print('Working on File ' + fensapdatFiles[i])
             dataset = tecplot.data.load_tecplot(path + "\\" + fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
             tecplot.data.save_tecplot_plt(path + "\\" + fensapdatFiles[i].replace(".dat",".soln.plt"),
                                           include_text=False,
@@ -163,6 +166,7 @@ def createcplotFile():
             fensaptecplotFiles.append(fensapdatFiles[i].replace(".dat",".soln.plt"))
     for i in range(len(dropletdatFiles)):
         if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat",".drop.plt")):
+            print('Working on File ' + dropletdatFiles[i])
             dataset = tecplot.data.load_tecplot(path + "\\" + dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
             tecplot.data.save_tecplot_plt(path + "\\" + dropletdatFiles[i].replace(".dat",".drop.plt"),
                                           include_text=False,
@@ -172,6 +176,7 @@ def createcplotFile():
             droplettecplotFiles.append(dropletdatFiles[i].replace(".dat",".drop.plt"))
     for i in range(len(icedatFiles)):
         if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat",".ice.plt")):
+            print('Working on File ' + icedatFiles[i])
             dataset = tecplot.data.load_tecplot(path + "\\" + icedatFiles[i], read_data_option=ReadDataOption.Replace)
             tecplot.data.save_tecplot_plt(path + "\\" + icedatFiles[i].replace(".dat",".ice.plt"),
                                           include_text=False,
@@ -182,12 +187,15 @@ def createcplotFile():
 
 
 def mainRun():
+    print('Main Run')
     global folder
     global dataset
     global plot
     global frame
     for File in fensaptecplotFiles:
+        print('Working on File ' + File)
         dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        setDatasetValues()
         try:
             folder = "PostPro"+ str(File.split(".")[2])
         except:
@@ -211,6 +219,7 @@ def mainRun():
         setupslices()
 
     for File in droplettecplotFiles:
+        print('Working on File ' + File)
         try:
             folder = "PostPro"+ str(File.split(".")[2])
         except:
@@ -220,11 +229,13 @@ def mainRun():
         except:
             pass
         dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        setDatasetValues()
         prepareScene()
         collection()
         dropletLWC()
 
     for File in icetecplotFiles:
+        print('Working on File ' + File)
         try:
             folder = "PostPro"+ str(File.split(".")[2])
         except:
@@ -234,6 +245,7 @@ def mainRun():
         except:
             pass
         dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        setDatasetValues()
         prepareSceneIce()
         masscaught()
         icethickness()
@@ -241,6 +253,7 @@ def mainRun():
         filmthickness()
 
     for File in iceGrids:
+        print('Working on File ' + File)
         try:
             folder = "PostPro"+ str(File.split(".")[2])
         except:
@@ -253,6 +266,31 @@ def mainRun():
         dataset = tecplot.data.load_tecplot(path + "\\" + fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
         dataset = tecplot.data.load_stl(path + "\\" + File)
         icescenes()
+
+
+def setDatasetValues():
+    global wallRegions
+    global inletRegions
+    global eidValues
+    global turbVariables
+    zones = dataset.zone_names
+    variables = dataset.variable_names
+
+    wallRegions = 0
+    inletRegions = 0
+    eidValues = 0
+    for zone in zones:
+        if "WALL" in zone:
+            wallRegions = wallRegions+1
+        if "INLET" in zone:
+            inletRegions = inletRegions+1
+    for variable in variables:
+        if "EIDHS" in variable:
+            eidValues = 4
+        if "nutilde" in variable:
+            turbVariables = 1
+        if "omega" in variable:
+            turbVariables = 2
 
 
 def icescenes():
@@ -294,13 +332,14 @@ def icescenes():
 
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', picturewidth, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
 
 
 def convertData():
+    print('Convert Data')
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SetFieldVariables ConvectionVarsAreMomentum='F' UVarNum=6 VVarNum=7 WVarNum=8 ID1='Density' Variable1=4 ID2='NotUsed' Variable2=0")
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
@@ -332,7 +371,7 @@ def convertData():
 
 
 def prepareScene():
-
+    print('prepare Scene')
     # Change Aspect Ratio
     tecplot.macro.execute_file('changePaperSize.mcr')
 
@@ -344,6 +383,12 @@ def prepareScene():
     i = 1
     while (i <= inletRegions):
         plot.fieldmaps(i).show = False
+        i = i + 1
+
+    i = inletRegions+1
+
+    while (i <= inletRegions+wallRegions):
+        plot.fieldmaps(i).mesh.line_thickness = 0.05
         i = i + 1
 
     # Hide Outlet and periodics
@@ -398,6 +443,7 @@ def prepareSceneIce():
 
 
 def collection():
+    print('Collection efficiency-Droplet')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable= dataset.variable('Collection efficiency-Droplet')
     plot.contour(0).colormap_name = 'Magma'
@@ -413,6 +459,7 @@ def collection():
 
 
 def dropletLWC():
+    print('Droplet LWC (kg/m^3)')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable= dataset.variable('Droplet LWC (kg/m^3)')
     plot.contour(0).colormap_name = 'Magma'
@@ -428,6 +475,7 @@ def dropletLWC():
 
 
 def masscaught():
+    print('Mass Caught (kg/m^2s)')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable= dataset.variable('Mass Caught (kg/m^2s)')
     plot.contour(0).colormap_name = 'Magma'
@@ -443,6 +491,7 @@ def masscaught():
 
 
 def icethickness():
+    print('Ice thickness  (m)')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable = dataset.variable('Ice thickness  (m)')
     plot.contour(0).colormap_name = 'Magma'
@@ -458,6 +507,7 @@ def icethickness():
 
 
 def walltemperature():
+    print('Wall Temperature (C)')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable= dataset.variable('Wall Temperature (C)')
     plot.contour(0).colormap_name='Diverging - Blue/Red'
@@ -472,6 +522,7 @@ def walltemperature():
 
 
 def filmthickness():
+    print('Film Thickness (micron)')
     #plot.contour(0).variable_index = 29
     plot.contour(0).variable= dataset.variable('Film Thickness (micron)')
     plot.contour(0).colormap_name='Diverging - Blue/Red'
@@ -486,6 +537,7 @@ def filmthickness():
 
 
 def saveData():
+    print('Save Data')
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="Integrate [" + str(inletRegions + 2) + '-' + str(
                                                inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
@@ -523,6 +575,7 @@ def saveViews():
 
 
 def density():
+    print('Density')
     plot.contour(0).variable_index = 3
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(1.2, 1.4, 21))
@@ -538,6 +591,7 @@ def density():
 
 
 def mesh():
+    print('Mesh')
     plot.show_contour = False
     plot.show_shade = True
     plot.show_mesh = True
@@ -548,7 +602,7 @@ def mesh():
 
 
 def IsoTurb():
-
+    print('turbulent viscosity (kg/m s)')
     plot.contour(0).variable= dataset.variable('turbulent viscosity (kg/m s)')
     plot.show_contour = False
     plot.show_shade = True
@@ -569,6 +623,7 @@ def IsoTurb():
 
 
 def pressure():
+    print('Pressure')
     plot.contour(0).variable_index = 4
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(97000, 106000, 21))
@@ -583,6 +638,7 @@ def pressure():
 
 
 def velocity():
+    print('Velocity')
     plot.contour(0).variable_index = 40 + turbVariables+eidValues
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(0, 150, 21))
@@ -597,6 +653,7 @@ def velocity():
 
 
 def shearstress():
+    print('ShearStress')
     plot.contour(0).variable_index = 36 + turbVariables+eidValues
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(0, 150, 21))
@@ -610,6 +667,7 @@ def shearstress():
 
 
 def pressuretz():
+    print('Pressure TZ')
     plot.contour(0).variable_index = 32 + turbVariables+eidValues
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(-4100, 4100, 21))
@@ -623,6 +681,7 @@ def pressuretz():
 
 
 def pressurez():
+    print('Pressure Z')
     plot.contour(0).variable_index = 29 + turbVariables+eidValues
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(-4100, 4100, 21))
@@ -636,6 +695,7 @@ def pressurez():
 
 
 def momentz():
+    print('moment TZ')
     plot.contour(0).variable_index = 35 + turbVariables+eidValues
     plot.contour(0).colormap_name = 'Large Rainbow'
     plot.contour(0).levels.reset_levels(np.linspace(-1200, 1200, 21))
@@ -679,7 +739,7 @@ def slices(name):
 
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+name+'\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+name+'\\' + str(radius) + '.png', picturewidth, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
@@ -717,7 +777,7 @@ def meshslices():
 
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\49_Mesh\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\49_Mesh\\' + str(radius) + '.png', picturewidth*2, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
@@ -738,13 +798,14 @@ def savePicture(name):
         plot.view.alpha = view[7]
 
         tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + view[0] + ".png",
-                                width=1920,
+                                width=picturewidth,
                                 region=ExportRegion.AllFrames,
                                 supersample=1,
                                 convert_to_256_colors=False)
 
 
 def setupslices():
+    print('Slices')
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
@@ -806,7 +867,7 @@ def setupslices():
         plot.axes.y_axis(0).max = 105000
 
         # export image of pressure coefficient as a function of x/c
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\30_Slices\\' + str(radius) + '.png', 1920, supersample=3)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\30_Slices\\' + str(radius) + '.png', picturewidth, supersample=1)
         text.text_string = ""
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
