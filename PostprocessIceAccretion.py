@@ -120,7 +120,7 @@ def searchFile(Folder):
                 icedatFiles.append(Files)
             if Files.startswith("swimsol.ice.") and Files.endswith(".plt") and not Files.endswith(".disp"):
                 icetecplotFiles.append(Files)
-            if Files.startswith("ice.grid.ice"):
+            if Files.startswith("ice.grid.ice") and not Files.endswith(".3dtmp"):
                 icegridFiles.append(Files)
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
@@ -265,6 +265,7 @@ def mainRun():
 
         dataset = tecplot.data.load_tecplot(path + "\\" + fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
         dataset = tecplot.data.load_stl(path + "\\" + File)
+        prepareSceneIce()
         icescenes()
 
 
@@ -305,7 +306,7 @@ def icescenes():
     slice_0.edge.show=True
     slice_0.contour.show=False
     plot.show_shade=False
-    slice_0.edge.line_thickness=0.5
+    slice_0.edge.line_thickness=0.1
     # Turn on slice and get handle to slice object
     plot.show_slices = True
 
@@ -472,6 +473,7 @@ def dropletLWC():
     plot.contour(0).legend.position = (50, 5)
     plot.contour(0).labels.step = 5
     savePicture("12_DropletLWC")
+    slices("46_LWC")
 
 
 def masscaught():
