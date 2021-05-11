@@ -875,10 +875,6 @@ def setupslices():
 
 
 # Open File
-tecplot.new_layout()
-frame = tecplot.active_frame()
-plot = frame.plot()
-dataset = []
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
 
@@ -886,6 +882,11 @@ path = fd.askdirectory()
 searchFile(path)
 createdatfile()
 searchFile(path)
+
+tecplot.new_layout()
+frame = tecplot.active_frame()
+plot = frame.plot()
+dataset = []
 createcplotFile()
 
 mainRun()
