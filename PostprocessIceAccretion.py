@@ -1,6 +1,6 @@
 # Author Nicolas Mueller
 #
-# This code is meant to posprocess the data from the propeller simulations, to extract the thust and the moment, as well
+# This code is meant to postprocess the data from the propeller simulations, to extract the thust and the moment, as well
 # as pictures and pressure slices
 #
 #
@@ -47,7 +47,10 @@ views = [
     ["Bottom", 0.28, -0.13837, -0.0118782, 10, 0.00, 0.00, 0.00],
     ["Top", 0.28, -0.13837, -0.00469803, -27.2985, 180.00, -180.00, 0.00],
     ["ISO1", 0.209359, -23.5632, 12.2607, -6.29767, 103.31, 117.56, -176.19],
-    ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63, 113.39, 153.57]
+    ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63, 113.39, 153.57],
+    ["Tip-1", 0.0508641, 1.91029, -0.230812, -0.395172, 102.43, -82.13, 178.55],
+    ["Tip-2",0.0507068, 1.94302, -0.0404362, 0.0541199, 87.78, -88.66, -178.21],
+    ["Tip-3",0.0494703,1.92428, 0.108381, -0.250, 97.69, -93.31, 162.90]
 ]
 
 radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
@@ -122,6 +125,20 @@ def searchFile(Folder):
                 icetecplotFiles.append(Files)
             if Files.startswith("ice.grid.ice") and not Files.endswith(".3dtmp"):
                 icegridFiles.append(Files)
+            if Files == "soln":
+                fensapSolutions.append(Files)
+            if Files == "droplet":
+                dropletSolutions.append(Files)
+            if Files == "droplet.dat":
+                dropletdatFiles.append(Files)
+            if Files == "swimsol":
+                iceSolutions.append(Files)
+            if Files == "map.grid":
+                icegridFiles.append(Files)
+            if Files == "swimsol.dat":
+                icedatFiles.append(Files)
+            if Files == "soln.dat":
+                fensapdatFiles.append(Files)
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
 
@@ -137,20 +154,17 @@ def createdatfile():
             print("Convert " + fensapSolutions[i])
             str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i] + "\" \"" + fensapSolutions[i] + "\""
             os.system(str)
-            print(str)
-            fensapdatFiles.append(fensapSolutions[i] + ".dat")
+            #print(str)
     for i in range(len(dropletSolutions)):
         if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat") and not droplettecplotFiles.__contains__(dropletSolutions[i] + ".drop.plt") :
             print("Convert " + dropletSolutions[i])
             str = "CreateDatFilesDrop.bat \"" + path + "\" \"" + grids[i] + "\" \"" + dropletSolutions[i] + "\""
             os.system(str)
-            dropletdatFiles.append(dropletSolutions[i] + ".dat")
     for i in range(len(iceSolutions)):
         if not icedatFiles.__contains__(iceSolutions[i] + ".dat") and not icetecplotFiles.__contains__(iceSolutions[i] + ".ice.plt"):
             print("Convert " + iceSolutions[i])
             str = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
             os.system(str)
-            icetecplotFiles.append(iceSolutions[i] + ".dat")
 
 
 def createcplotFile():
@@ -162,8 +176,6 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-
-            fensaptecplotFiles.append(fensapdatFiles[i].replace(".dat",".soln.plt"))
     for i in range(len(dropletdatFiles)):
         if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat",".drop.plt")):
             print('Working on File ' + dropletdatFiles[i])
@@ -172,8 +184,6 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-
-            droplettecplotFiles.append(dropletdatFiles[i].replace(".dat",".drop.plt"))
     for i in range(len(icedatFiles)):
         if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat",".ice.plt")):
             print('Working on File ' + icedatFiles[i])
@@ -182,8 +192,6 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-
-            icetecplotFiles.append(icedatFiles[i].replace(".dat",".ice.plt"))
 
 
 def mainRun():
@@ -196,8 +204,10 @@ def mainRun():
         print('Working on File ' + File)
         dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
+        folder = "PostPro"
         try:
-            folder = "PostPro"+ str(File.split(".")[2])
+            if str(File.split(".")[2]).isnumeric():
+                folder = "PostPro"+ str(File.split(".")[2])
         except:
             pass
         try:
@@ -216,12 +226,16 @@ def mainRun():
         saveData()
         prepareScene()
         saveViews()
-        setupslices()
+        setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
+        setupslices('ShearStress','31_ShearStress', 0, 50, False)
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
+        folder = "PostPro"
         try:
-            folder = "PostPro"+ str(File.split(".")[2])
+            if str(File.split(".")[2]).isnumeric():
+                folder = "PostPro"+ str(File.split(".")[2])
+
         except:
             pass
         try:
@@ -233,11 +247,15 @@ def mainRun():
         prepareScene()
         collection()
         dropletLWC()
+        setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
+        setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
 
     for File in icetecplotFiles:
         print('Working on File ' + File)
+        folder = "PostPro"
         try:
-            folder = "PostPro"+ str(File.split(".")[2])
+            if str(File.split(".")[2]).isnumeric():
+                folder = "PostPro"+ str(File.split(".")[2])
         except:
             pass
         try:
@@ -251,11 +269,20 @@ def mainRun():
         icethickness()
         walltemperature()
         filmthickness()
+        rwHeatFlow()
+        rwWaterHF()
+        rwConvectionHF()
+        rwEvaporationHF()
+        feHeatFlow()
+        setupslices('Ice thickness  (m)','35_IceThickness', 0, 0.01, False)
+        setupslices('Wall Temperature (C)','36_WallTemp', -15, 2, False)
 
     for File in iceGrids:
         print('Working on File ' + File)
+        folder = "PostPro"
         try:
-            folder = "PostPro"+ str(File.split(".")[2])
+            if str(File.split(".")[2]).isnumeric():
+                folder = "PostPro"+ str(File.split(".")[2])
         except:
             pass
         try:
@@ -265,7 +292,8 @@ def mainRun():
 
         dataset = tecplot.data.load_tecplot(path + "\\" + fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
         dataset = tecplot.data.load_stl(path + "\\" + File)
-        prepareSceneIce()
+        setDatasetValues()
+        prepareSceneIceGrids()
         icescenes()
 
 
@@ -297,7 +325,8 @@ def setDatasetValues():
 def icescenes():
     plot.show_contour = False
     plot.show_shade = True
-    plot.fieldmaps(wallRegions+inletRegions+3).shade.color = Color.Red
+    plot.fieldmaps(wallRegions+inletRegions+4).shade.color = Color.Red
+    plot.fieldmaps(2*wallRegions+inletRegions+5).shade.color = Color.Red
     savePicture("25_Ice")
     plot.show_contour = False
     plot.show_shade = False
@@ -418,6 +447,53 @@ def prepareScene():
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
 
 
+def prepareSceneIceGrids():
+    print('prepare Scene')
+    # Change Aspect Ratio
+    tecplot.macro.execute_file('changePaperSize.mcr')
+
+    tecplot.active_frame().plot().frame.width = 14
+    tecplot.active_frame().plot().frame.height = 8
+    tecplot.active_frame().plot().frame.position=(0,0)
+
+    # Hide Inlets
+    i = 1
+    while (i <= inletRegions):
+        plot.fieldmaps(i).show = False
+        i = i + 1
+
+    i = inletRegions+1
+
+    while (i <= inletRegions+wallRegions):
+        plot.fieldmaps(i).mesh.line_thickness = 0.05
+        i = i + 1
+
+    # Hide Outlet and periodics
+    plot.fieldmaps(inletRegions + wallRegions + 1).show = False
+    plot.fieldmaps(inletRegions + wallRegions + 2).show = False
+    plot.fieldmaps(inletRegions + wallRegions + 3).show = False
+
+    # Rotate Data
+    tecplot.macro.execute_command('''$!AxialDuplicate 
+      ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
+      Angle = 180
+      NumDuplicates = 1
+      XVar = 1
+      YVar = 2
+      ZVar = 3''')
+
+    tecplot.macro.execute_command('''$!AxialDuplicate 
+      ZoneList =  [''' + str(inletRegions + wallRegions + 5) + '-' + str(inletRegions + wallRegions + 5) + ''']
+      Angle = 180
+      NumDuplicates = 1
+      XVar = 1
+      YVar = 2
+      ZVar = 3''')
+    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
+    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
+    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
+
+
 def prepareSceneIce():
     global plot
     # Change Aspect Ratio
@@ -478,64 +554,152 @@ def dropletLWC():
 
 def masscaught():
     print('Mass Caught (kg/m^2s)')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable= dataset.variable('Mass Caught (kg/m^2s)')
-    plot.contour(0).colormap_name = 'Magma'
-    plot.contour(0).colormap_filter.reversed=True
-    #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("22_MassCaught")
+    variable = dataset.variable('Mass Caught (kg/m^2s)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name = 'Magma'
+        plot.contour(0).colormap_filter.reversed=True
+        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("22_MassCaught")
 
 
 def icethickness():
     print('Ice thickness  (m)')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable = dataset.variable('Ice thickness  (m)')
-    plot.contour(0).colormap_name = 'Magma'
-    plot.contour(0).colormap_filter.reversed=True
-    #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("21_Icethickness")
+    variable = dataset.variable('Ice thickness  (m)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name = 'Magma'
+        plot.contour(0).colormap_filter.reversed=True
+        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("21_Icethickness")
 
 
 def walltemperature():
     print('Wall Temperature (C)')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable= dataset.variable('Wall Temperature (C)')
-    plot.contour(0).colormap_name='Diverging - Blue/Red'
-    #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("23_Temperature")
+    variable = dataset.variable('Wall Temperature (C)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("23_Temperature")
 
 
 def filmthickness():
     print('Film Thickness (micron)')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable= dataset.variable('Film Thickness (micron)')
-    plot.contour(0).colormap_name='Diverging - Blue/Red'
-    #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("24_FilmThickness")
+    variable = dataset.variable('Film Thickness (micron)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("24_FilmThickness")
+
+def rwHeatFlow():
+    print('RW Required HF (W/m^2)')
+    variable = dataset.variable('RW Required HF (W/m^2)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        plot.contour(0).colormap_filter.reversed=False
+        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("25_RWHeatFlow")
+
+
+def feHeatFlow():
+    print('FE Required HF (W/m^2)')
+    variable = dataset.variable('FE Required HF (W/m^2)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        plot.contour(0).colormap_filter.reversed=False
+        plot.contour(0).levels.reset_levels(np.linspace(0, 100000, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("26_FEHeatFlow")
+
+
+def rwWaterHF():
+    print('RW Water Droplet HF (W/m^2)')
+    variable = dataset.variable('RW Water Droplet HF (W/m^2)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        plot.contour(0).colormap_filter.reversed=True
+        plot.contour(0).levels.reset_levels(np.linspace(-10000, 0000, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("27_RWWaterHeatFlow")
+
+
+def rwConvectionHF():
+    print('RW Convection HF (W/m^2)')
+    variable = dataset.variable('RW Convection HF (W/m^2)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name = 'Diverging - Blue/Red'
+        plot.contour(0).colormap_filter.reversed = False
+        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("28_RWConvectionHeatFlow")
+
+
+def rwEvaporationHF():
+    print('RW Evaporation HF (W/m^2)')
+    variable = dataset.variable('RW Evaporation HF (W/m^2)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name = 'Diverging - Blue/Red'
+        plot.contour(0).colormap_filter.reversed = False
+        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("28_RWEvaporationHeatFlow")
 
 
 def saveData():
@@ -806,12 +970,12 @@ def savePicture(name):
                                 convert_to_256_colors=False)
 
 
-def setupslices():
+def setupslices(variable, foldername, min, max,reverse):
     print('Slices')
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\30_Slices')
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\'+foldername)
     except:
         pass
     for radius in radii:
@@ -846,7 +1010,7 @@ def setupslices():
             name=extracted_slice.name,
             zone=extracted_slice,
             x=dataset.variable('y'),
-            y=dataset.variable('Pressure (N/m^2)'))
+            y=dataset.variable(variable))
 
         # overlay result on plot in upper right corner
         text = frame.add_text(str(radius), (50, 95))
@@ -854,22 +1018,22 @@ def setupslices():
         # set style of linemap plot
         cp_linemap.line.color = tecplot.constant.Color.Blue
         cp_linemap.line.line_thickness = 0.2
-        cp_linemap.y_axis.reverse = True
+        cp_linemap.y_axis.reverse = reverse
 
         # update axes limits to show data
         plot.view.fit()
         tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
-        tecplot.active_frame().plot().axes.y_axis(0).title.text = 'Pressure [Pa]]'
+        tecplot.active_frame().plot().axes.y_axis(0).title.text = variable
         tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
         # tecplot.active_frame().plot().axes.area.left = 15
 
         tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Chord [-]'
         plot.view.fit()
-        plot.axes.y_axis(0).min = 95000
-        plot.axes.y_axis(0).max = 105000
+        plot.axes.y_axis(0).min = min
+        plot.axes.y_axis(0).max = max
 
         # export image of pressure coefficient as a function of x/c
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\30_Slices\\' + str(radius) + '.png', picturewidth, supersample=1)
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
         text.text_string = ""
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
@@ -888,6 +1052,8 @@ frame = tecplot.active_frame()
 plot = frame.plot()
 dataset = []
 createcplotFile()
+searchFile(path)
+
 
 mainRun()
 
