@@ -102,43 +102,43 @@ def searchFile(Folder):
         # print('Looking in:',root)
         for Files in files:
             if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp")and not Files.endswith(".plt"):
-                fensapSolutions.append(Files)
+                fensapSolutions.append(os.path.join(root, Files))
             if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
-                dropletSolutions.append(Files)
+                dropletSolutions.append(os.path.join(root, Files))
             if Files.startswith("swimsol.ice.")and not Files.endswith(".dat") and not Files.endswith(".plt"):
-                iceSolutions.append(Files)
+                iceSolutions.append(os.path.join(root, Files))
             if Files.startswith("ice.ice.") and Files.endswith(".stl"):
-                iceGrids.append(Files)
+                iceGrids.append(os.path.join(root, Files))
             if Files.startswith("grid.ice."):
-                grids.append(Files)
+                grids.append(os.path.join(root, Files))
             if Files.endswith("soln.plt"):
-                fensaptecplotFiles.append(Files)
+                fensaptecplotFiles.append(os.path.join(root, Files))
             if Files.endswith("drop.plt"):
-                droplettecplotFiles.append(Files)
+                droplettecplotFiles.append(os.path.join(root, Files))
             if Files.startswith("soln.fensap.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
-                fensapdatFiles.append(Files)
+                fensapdatFiles.append(os.path.join(root, Files))
             if Files.startswith("droplet.drop.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
-                dropletdatFiles.append(Files)
+                dropletdatFiles.append(os.path.join(root, Files))
             if Files.startswith("swimsol.ice.") and  Files.endswith(".dat") and not Files.endswith(".plt"):
-                icedatFiles.append(Files)
+                icedatFiles.append(os.path.join(root, Files))
             if Files.startswith("swimsol.ice.") and Files.endswith(".plt") and not Files.endswith(".disp"):
-                icetecplotFiles.append(Files)
+                icetecplotFiles.append(os.path.join(root, Files))
             if Files.startswith("ice.grid.ice") and not Files.endswith(".3dtmp"):
-                icegridFiles.append(Files)
+                icegridFiles.append(os.path.join(root, Files))
             if Files == "soln":
-                fensapSolutions.append(Files)
+                fensapSolutions.append(os.path.join(root, Files))
             if Files == "droplet":
-                dropletSolutions.append(Files)
+                dropletSolutions.append(os.path.join(root, Files))
             if Files == "droplet.dat":
-                dropletdatFiles.append(Files)
+                dropletdatFiles.append(os.path.join(root, Files))
             if Files == "swimsol":
-                iceSolutions.append(Files)
+                iceSolutions.append(os.path.join(root, Files))
             if Files == "map.grid":
-                icegridFiles.append(Files)
+                icegridFiles.append(os.path.join(root, Files))
             if Files == "swimsol.dat":
-                icedatFiles.append(Files)
+                icedatFiles.append(os.path.join(root, Files))
             if Files == "soln.dat":
-                fensapdatFiles.append(Files)
+                fensapdatFiles.append(os.path.join(root, Files))
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
 
@@ -147,7 +147,7 @@ def createdatfile():
     if not hasinitGrid:
         firstGrid = fd.askopenfilename()
         os.link(firstGrid, path + "\\Initialgrid.grid")
-    grids.insert(0, "Initialgrid.grid")
+    grids.insert(0, os.path.join(path,"Initialgrid.grid"))
 
     for i in range(len(fensapSolutions)):
         if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") and not fensaptecplotFiles.__contains__(fensapSolutions[i]+".soln.plt"):
@@ -202,7 +202,7 @@ def mainRun():
     global frame
     for File in fensaptecplotFiles:
         print('Working on File ' + File)
-        dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         folder = "PostPro"
         try:
@@ -242,7 +242,7 @@ def mainRun():
             os.mkdir(path.replace("/","\\") + "\\" + folder)
         except:
             pass
-        dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareScene()
         collection()
@@ -262,7 +262,7 @@ def mainRun():
             os.mkdir(path.replace("/","\\") + "\\" + folder)
         except:
             pass
-        dataset = tecplot.data.load_tecplot(path + "\\" + File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
         masscaught()
@@ -274,8 +274,8 @@ def mainRun():
         rwConvectionHF()
         rwEvaporationHF()
         feHeatFlow()
-        setupslices('Ice thickness  (m)','35_IceThickness', 0, 0.01, False)
-        setupslices('Wall Temperature (C)','36_WallTemp', -15, 2, False)
+        setupslices('Ice thickness  (m)', '35_IceThickness', 0, 0.01, False)
+        setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
 
     for File in iceGrids:
         print('Working on File ' + File)
@@ -738,6 +738,23 @@ def saveViews():
     mesh()
     meshslices()
     IsoTurb()
+    statictemperature()
+
+
+def statictemperature():
+    print('Static Temperature (K)')
+    variable = dataset.variable('Static Temperature (K)')
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name='Diverging - Blue/Red'
+        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture("09_Temperature")
 
 
 def density():
@@ -761,7 +778,7 @@ def mesh():
     plot.show_contour = False
     plot.show_shade = True
     plot.show_mesh = True
-    savePicture("09_Mesh")
+    savePicture("50_Mesh")
     plot.show_contour = True
     plot.show_shade = False
     plot.show_mesh = False
