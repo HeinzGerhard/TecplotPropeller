@@ -16,11 +16,9 @@ from tkinter import filedialog as fd
 from tkinter import simpledialog
 import os
 import numpy as np
-
 import tecplot
 from tecplot.exception import *
 from tecplot.constant import *
-
 import sys
 
 logging.basicConfig(level=logging.DEBUG)
@@ -33,8 +31,8 @@ if '-c' in sys.argv:
     tecplot.session.connect()
 
 turbVariables = 1
-eidValues = 0#4
-wallRegions = 3#5
+eidValues = 0  # 4
+wallRegions = 3  # 5
 inletRegions = 2
 rotationRate = 3500
 temperature = -5
@@ -245,7 +243,7 @@ def mainRun():
         saveViews()
         setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
         setupslices('ShearStress','31_ShearStress', 0, 50, False)
-        setupsliceswrap('ShearStress', '31b_ShearStress', 0, 50, False)
+        setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 50, False)
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
@@ -267,8 +265,9 @@ def mainRun():
         dropletLWC()
         #setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
         #setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
-        setupsliceswrap('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
-        setupsliceswrap('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
+        setupsliceswrap('Droplet LWC (kg/m^3)', None, '34_DropletLWC', 0, 0.005, False)
+        setupsliceswrap('Collection efficiency-Droplet', None, '33_CollectionEff', 0, 1, False)
+        setupsliceswrap('Collection efficiency-Droplet', 'Droplet LWC (kg/m^3)', '35_Collection', 0, 1, False)
 
     for File in icetecplotFiles:
         print('Working on File ' + File)
@@ -285,7 +284,9 @@ def mainRun():
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
-        masscaught()
+        setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '38_RWTotal', 0, None, False)
+        threeDScene('Mass Caught (kg/m^2s)', 'Magma', True, 0, None, 21, "22_MassCaught")
         icethickness()
         walltemperature()
         filmthickness()
@@ -295,13 +296,14 @@ def mainRun():
         rwEvaporationHF()
         feHeatFlow()
         threeDScene('RW Film height (micron)', 'Diverging - Blue/Red',False,0, 10, 21,"29_RW_Film_Height")
-        #setupslices('Ice thickness  (m)', '35_IceThickness', 0, None, False)
-        #setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
-        setupsliceswrap('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
-        setupsliceswrap('Mass Caught (kg/m^2s)', '37_MassCaught', 0, None, False)
-        setupsliceswrap('RW Film height (micron)', '39_RW_Film_Height',0, 10, False)
-        setupsliceswrap('Ice thickness  (m)', '35_IceThickness', 0, None, False)
-        setupsliceswrap('RW Required HF (W/m^2)', '38_RWHeatFlow', 0, None, False)
+        # setupslices('Ice thickness  (m)', '35_IceThickness', 0, None, False)
+        # setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
+        setupsliceswrap('Wall Temperature (C)', None, '36_WallTemp', -15, 2, False)
+        setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
+        setupsliceswrap('RW Film height (micron)', None, '39_RW_Film_Height',0, 10, False)
+        setupsliceswrap('Ice thickness  (m)', None, '35_IceThickness', 0, None, False)
+        setupsliceswrap('RW Required HF (W/m^2)', None, '38_RWHeatFlow', 0, None, False)
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '39_RWTotal', 0, None, False)
 
     for File in iceGrids:
         print('Working on File ' + File)
@@ -488,13 +490,13 @@ def prepareSceneIceGrids():
 
     # Hide Inlets
     i = 1
-    while (i <= inletRegions):
+    while i <= inletRegions:
         plot.fieldmaps(i).show = False
         i = i + 1
 
     i = inletRegions+1
 
-    while (i <= inletRegions+wallRegions):
+    while i <= inletRegions+wallRegions:
         plot.fieldmaps(i).mesh.line_thickness = 0.05
         i = i + 1
 
@@ -585,24 +587,6 @@ def dropletLWC():
     savePicture("12_DropletLWC")
     slices("46_LWC")
 
-
-def masscaught():
-    print('Mass Caught (kg/m^2s)')
-    variable = dataset.variable('Mass Caught (kg/m^2s)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name = 'Magma'
-        plot.contour(0).colormap_filter.reversed=True
-        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("22_MassCaught")
-
-
 def icethickness():
     print('Ice thickness  (m)')
     variable = dataset.variable('Ice thickness  (m)')
@@ -642,7 +626,7 @@ def filmthickness():
     if variable is not None:
         plot.contour(0).variable = variable
         plot.contour(0).colormap_name='Diverging - Blue/Red'
-        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
+        # plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
         plot.show_contour = True
         plot.show_shade = False
         plot.contour(0).legend.vertical = False
@@ -669,14 +653,17 @@ def rwHeatFlow():
         savePicture("25_RWHeatFlow")
 
 
-def threeDScene(variableName, colormap, reverse, min, max, spacing, folder):
+def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder):
     print(variableName)
     variable = dataset.variable(variableName)
     if variable is not None:
+        tecplot.active_frame().plot_type = PlotType.Cartesian3D
         plot.contour(0).variable = variable
         plot.contour(0).colormap_name=colormap
         plot.contour(0).colormap_filter.reversed=reverse
-        plot.contour(0).levels.reset_levels(np.linspace(min, max, spacing))
+
+        if maxc is not None:
+            plot.contour(0).levels.reset_levels(np.linspace(minc, maxc, spacing))
         plot.show_contour = True
         plot.show_shade = False
         plot.contour(0).legend.vertical = False
@@ -1039,7 +1026,7 @@ def savePicture(name):
 
 
 def setupslices(variable, foldername, min, max,reverse):
-    print('Slices')
+    print('Chordwise plots of ' + variable)
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
@@ -1095,6 +1082,7 @@ def setupslices(variable, foldername, min, max,reverse):
         tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
         # tecplot.active_frame().plot().axes.area.left = 15
 
+        tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
         tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Chord [-]'
         plot.view.fit()
         plot.axes.y_axis(0).min = min
@@ -1106,20 +1094,32 @@ def setupslices(variable, foldername, min, max,reverse):
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 
-def setupsliceswrap(variable, foldername, min, max,reverse):
-    print('Slices')
+# Create wrapping distance plots
+def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
+    print('Wrapping distance plots of '+variable)
 
+    # Check if variable is in dataset
     variabletest = dataset.variable(variable)
     if variabletest is not None:
+        if variable2 is not None:
+            variabletest = dataset.variable(variable2)
+            if variabletest is None:
+                variable2 = None
+
         frame.plot_type = tecplot.constant.PlotType.XYLine
 
+        # make Folder
         try:
             os.mkdir(path.replace("/","\\") + '\\' + folder + '\\'+foldername)
         except:
             pass
+
+        # Loop over all radii for the plot creation
         for radius in radii:
+
             tecplot.active_frame().plot_type = PlotType.Cartesian3D
-            # extract an arbitrary slice from the surface data on the wing
+
+            # extract an arbitrary slice from the surface data on the propeller
             extracted_slice = tecplot.data.extract.extract_slice(
                 origin=(radiusPropeller * radius / 100, 0, 0),
                 normal=(1, 0, 0),
@@ -1131,20 +1131,28 @@ def setupsliceswrap(variable, foldername, min, max,reverse):
             plot.delete_linemaps()
             extracted_slice.name = str(radius)
 
-            # get x from slice
+            # get variables from slice
             extracted_y = extracted_slice.values('y')
             extracted_x = extracted_slice.values('X')
             extracted_z = extracted_slice.values('Z')
             extracted_variable = extracted_slice.values(variable)
+
 
             # copy of data as a numpy array
             x = extracted_x.as_numpy_array()
             y = extracted_y.as_numpy_array()
             z = extracted_z.as_numpy_array()
             var = extracted_variable.as_numpy_array()
-            arr = np.empty(z.size)
-            dist = np.empty(z.size)
-            i = 0
+            if variable2 is not None:
+                extracted_variable2 = extracted_slice.values(variable2)
+                var2 = extracted_variable2.as_numpy_array()
+
+            #create empty arrays for later population
+            arr = np.empty(z.size) # Array for the wrapping distance
+            dist = np.empty(z.size) # Array for the distance between points
+            i = 0 # iteration variable
+
+            # Sort the point along the line, starting from the first element
             while i < z.size-1:
 
                 for idx, value in np.ndenumerate(z):
@@ -1157,15 +1165,18 @@ def setupsliceswrap(variable, foldername, min, max,reverse):
                 y[i+1], y[pos] = y[pos], y[i+1]
                 z[i+1], z[pos] = z[pos], z[i+1]
                 var[i+1], var[pos] = var[pos], var[i+1]
+                if variable2 is not None:
+                    var2[i + 1], var2[pos] = var2[pos], var2[i + 1]
                 i = i+1
 
-
+            # Integrate the distance along the line
             for idx, value in np.ndenumerate(z):
                 if idx[0] > 0:
                     arr[idx[0]] = math.sqrt((y[idx[0]]-y[idx[0]-1])**2+(z[idx[0]]-z[idx[0]-1])**2)+arr[idx[0]-1]
                 else:
                     arr[idx[0]] =0
 
+            # Find the starting point and fix the orientation of the line
             i = 0
             maxd=0
             maxind1=0
@@ -1189,8 +1200,9 @@ def setupsliceswrap(variable, foldername, min, max,reverse):
                 try:
                     arr = np.append(arr[maxind2:arr.size] - (arr.max()-arr.min()), arr[0:maxind2])
                     z = np.append(z[maxind2:z.size], z[0:maxind2])
-                    y = np.append(z[maxind2:z.size], y[0:maxind2])
                     var = np.append(var[maxind2:z.size], var[0:maxind2])
+                    if variable2 is not None:
+                        var2 = np.append(var2[maxind2:z.size], var2[0:maxind2])
                 except:
                     print("Error1")
                     print(maxind2)
@@ -1204,10 +1216,11 @@ def setupsliceswrap(variable, foldername, min, max,reverse):
                 arr = arr - arr[maxind2]
 
                 try:
-                    arr = np.append(arr[(maxind1):arr.size], arr[0:maxind1] + arr.max()-arr.min())
+                    arr = np.append(arr[maxind1:arr.size], arr[0:maxind1] + arr.max() - arr.min())
                     z = np.append(z[maxind1:z.size], z[0:maxind1])
-                    y = np.append(y[maxind1:y.size], y[0:maxind1])
                     var = np.append(var[maxind1:z.size], var[0:maxind1])
+                    if variable2 is not None:
+                        var2 = np.append(var2[maxind1:z.size], var2[0:maxind1])
                 except:
                     print("Error2")
                 try:
@@ -1215,45 +1228,67 @@ def setupsliceswrap(variable, foldername, min, max,reverse):
                         arr = -arr
                 except:
                     print("Error")
-            zone = dataset.add_ordered_zone('variable',z.size)
+
+            # Create new zone with the line and the results
+            zone = dataset.add_ordered_zone('variable', z.size)
             zone.values('x')[:] = arr
             zone.values('y')[:] = var
 
-            # normalize x
-            #xc = (x - x.min()) / (x.max() - x.min())
-            plot.delete_linemaps()
-            #extracted_x[:] = xc
             extracted_x[:] = arr
-            # switch plot type in current frame
-            # clear plot
+            plot.delete_linemaps()
 
 
             # create line plot from extracted zone data
-            cp_linemap = plot.add_linemap(
+            linemap = plot.add_linemap(
                 name=zone.name,
                 zone=zone,
                 x=dataset.variable('x'),
                 y=dataset.variable('y'))
 
+
             # overlay result on plot in upper right corner
             text = frame.add_text(str(radius), (50, 95))
 
             # set style of linemap plot
-            cp_linemap.line.color = tecplot.constant.Color.Blue
-            cp_linemap.line.line_thickness = 0.2
-            cp_linemap.y_axis.reverse = reverse
+            linemap.line.color = tecplot.constant.Color.Blue
+            linemap.line.line_thickness = 0.2
+            linemap.y_axis.reverse = reverse
 
             # update axes limits to show data
             plot.view.fit()
             tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
+            tecplot.active_frame().plot().axes.y_axis(0).title.title_mode = AxisTitleMode.UseText
             tecplot.active_frame().plot().axes.y_axis(0).title.text = variable
             tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
             # tecplot.active_frame().plot().axes.area.left = 15
+            tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
+            tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [m]'
 
-            tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrap [m]'
+            if variable2 is not None:
+                zone.values('z')[:] = var2
+                linemap2 = plot.add_linemap(
+                    name=zone.name,
+                    zone=zone,
+                    x=dataset.variable('x'),
+                    y=dataset.variable('z'))
+                linemap2.line.color = tecplot.constant.Color.Red
+                linemap2.line.line_thickness = 0.2
+                linemap2.y_axis.reverse = reverse
+                plot.linemaps(1).y_axis_index = 1
+                tecplot.active_frame().plot().axes.y_axis(1).title.font.size = 2.6
+                tecplot.active_frame().plot().axes.y_axis(1).title.title_mode = AxisTitleMode.UseText
+                tecplot.active_frame().plot().axes.y_axis(1).title.text = variable2
+                tecplot.active_frame().plot().axes.y_axis(1).title.offset = 11
+
             plot.view.fit()
-            #plot.axes.y_axis(0).min = min
-            #plot.axes.y_axis(0).max = max
+            plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
+            plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
+
+            if miny is not None:
+                plot.axes.y_axis(0).min = miny
+
+            if maxy is not None:
+                plot.axes.y_axis(0).max = maxy
 
             # export image of pressure coefficient as a function of x/c
             tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
@@ -1313,7 +1348,6 @@ plot = frame.plot()
 dataset = []
 createcplotFile()
 searchFile(path)
-
 
 mainRun()
 
