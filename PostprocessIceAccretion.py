@@ -10,9 +10,10 @@
 #
 
 import logging
+import math
 import tkinter
 from tkinter import filedialog as fd
-
+from tkinter import simpledialog
 import os
 import numpy as np
 
@@ -31,28 +32,25 @@ logging.basicConfig(level=logging.DEBUG)
 if '-c' in sys.argv:
     tecplot.session.connect()
 
-
 turbVariables = 1
 eidValues = 0#4
 wallRegions = 3#5
 inletRegions = 2
 rotationRate = 3500
+temperature = -5
 radiusPropeller = 21 * 0.0254 / 2
-
 picturewidth = 1920*2
-
+parameterFile = False
 views = [
-
     # ["Name", View width, X, Y, Z, Psi, Theta, Alpha]
     ["Bottom", 0.28, -0.13837, -0.0118782, 10, 0.00, 0.00, 0.00],
     ["Top", 0.28, -0.13837, -0.00469803, -27.2985, 180.00, -180.00, 0.00],
     ["ISO1", 0.209359, -23.5632, 12.2607, -6.29767, 103.31, 117.56, -176.19],
     ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63, 113.39, 153.57],
     ["Tip-1", 0.0508641, 1.91029, -0.230812, -0.395172, 102.43, -82.13, 178.55],
-    ["Tip-2",0.0507068, 1.94302, -0.0404362, 0.0541199, 87.78, -88.66, -178.21],
-    ["Tip-3",0.0494703,1.92428, 0.108381, -0.250, 97.69, -93.31, 162.90]
+    ["Tip-2", 0.0507068, 1.94302, -0.0404362, 0.0541199, 87.78, -88.66, -178.21],
+    ["Tip-3", 0.0494703, 1.92428, 0.108381, -0.250, 97.69, -93.31, 162.90]
 ]
-
 radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
 
 fensapSolutions = []
@@ -60,6 +58,8 @@ dropletSolutions = []
 iceSolutions = []
 iceGrids = []
 grids = []
+fensapparfiles = []
+iceparfiles = []
 fensaptecplotFiles = []
 fensapdatFiles = []
 dropletdatFiles = []
@@ -69,6 +69,7 @@ icetecplotFiles = []
 icegridFiles = []
 hasinitGrid = False
 folder = "PostPro"
+
 
 def searchFile(Folder):
 
@@ -98,11 +99,19 @@ def searchFile(Folder):
     icetecplotFiles = []
     icegridFiles = []
     hasinitGrid = False
+    cht3D = False
     for root, dirs, files in os.walk(Folder):
         # print('Looking in:',root)
+        for dir in dirs:
+
+            if dir == "CHT_compute":
+                cht3D = True
+
         for Files in files:
             if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp")and not Files.endswith(".plt"):
                 fensapSolutions.append(os.path.join(root, Files))
+                if cht3D: # Include Initial Grid if CHT3D Calc because there might be mult. simulations without new mesh
+                    grids.append(os.path.join(path,"Initialgrid.grid"))
             if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 dropletSolutions.append(os.path.join(root, Files))
             if Files.startswith("swimsol.ice.")and not Files.endswith(".dat") and not Files.endswith(".plt"):
@@ -137,6 +146,10 @@ def searchFile(Folder):
                 icegridFiles.append(os.path.join(root, Files))
             if Files == "swimsol.dat":
                 icedatFiles.append(os.path.join(root, Files))
+            if Files == "fensap.par":
+                fensapparfiles.append(os.path.join(root, Files))
+            if Files == "ice.par":
+                iceparfiles.append(os.path.join(root, Files))
             if Files == "soln.dat":
                 fensapdatFiles.append(os.path.join(root, Files))
             if Files.startswith("Initialgrid.grid"):
@@ -171,24 +184,24 @@ def createcplotFile():
     for i in range(len(fensapdatFiles)):
         if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat",".soln.plt")):
             print('Working on File ' + fensapdatFiles[i])
-            dataset = tecplot.data.load_tecplot(path + "\\" + fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(path + "\\" + fensapdatFiles[i].replace(".dat",".soln.plt"),
+            dataset = tecplot.data.load_tecplot(fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(fensapdatFiles[i].replace(".dat",".soln.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
     for i in range(len(dropletdatFiles)):
         if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat",".drop.plt")):
             print('Working on File ' + dropletdatFiles[i])
-            dataset = tecplot.data.load_tecplot(path + "\\" + dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(path + "\\" + dropletdatFiles[i].replace(".dat",".drop.plt"),
+            dataset = tecplot.data.load_tecplot( dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(dropletdatFiles[i].replace(".dat",".drop.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
     for i in range(len(icedatFiles)):
         if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat",".ice.plt")):
             print('Working on File ' + icedatFiles[i])
-            dataset = tecplot.data.load_tecplot(path + "\\" + icedatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(path + "\\" + icedatFiles[i].replace(".dat",".ice.plt"),
+            dataset = tecplot.data.load_tecplot(icedatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(icedatFiles[i].replace(".dat",".ice.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
@@ -200,6 +213,10 @@ def mainRun():
     global dataset
     global plot
     global frame
+    global rotationRate
+    global temperature
+    global parameterFile
+
     for File in fensaptecplotFiles:
         print('Working on File ' + File)
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
@@ -228,6 +245,7 @@ def mainRun():
         saveViews()
         setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
         setupslices('ShearStress','31_ShearStress', 0, 50, False)
+        setupsliceswrap('ShearStress', '31b_ShearStress', 0, 50, False)
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
@@ -247,8 +265,10 @@ def mainRun():
         prepareScene()
         collection()
         dropletLWC()
-        setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
-        setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
+        #setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
+        #setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
+        setupsliceswrap('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
+        setupsliceswrap('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
 
     for File in icetecplotFiles:
         print('Working on File ' + File)
@@ -274,8 +294,14 @@ def mainRun():
         rwConvectionHF()
         rwEvaporationHF()
         feHeatFlow()
-        setupslices('Ice thickness  (m)', '35_IceThickness', 0, 0.01, False)
-        setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
+        threeDScene('RW Film height (micron)', 'Diverging - Blue/Red',False,0, 10, 21,"29_RW_Film_Height")
+        #setupslices('Ice thickness  (m)', '35_IceThickness', 0, None, False)
+        #setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
+        setupsliceswrap('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
+        setupsliceswrap('Mass Caught (kg/m^2s)', '37_MassCaught', 0, None, False)
+        setupsliceswrap('RW Film height (micron)', '39_RW_Film_Height',0, 10, False)
+        setupsliceswrap('Ice thickness  (m)', '35_IceThickness', 0, None, False)
+        setupsliceswrap('RW Required HF (W/m^2)', '38_RWHeatFlow', 0, None, False)
 
     for File in iceGrids:
         print('Working on File ' + File)
@@ -290,8 +316,8 @@ def mainRun():
         except:
             pass
 
-        dataset = tecplot.data.load_tecplot(path + "\\" + fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
-        dataset = tecplot.data.load_stl(path + "\\" + File)
+        dataset = tecplot.data.load_tecplot(fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_stl(File)
         setDatasetValues()
         prepareSceneIceGrids()
         icescenes()
@@ -427,24 +453,28 @@ def prepareScene():
     plot.fieldmaps(inletRegions + wallRegions + 3).show = False
 
     # Rotate Data
-    tecplot.macro.execute_command('''$!AxialDuplicate 
-      ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
-      Angle = 180
-      NumDuplicates = 1
-      XVar = 1
-      YVar = 2
-      ZVar = 3''')
 
-    tecplot.macro.execute_command('''$!AxialDuplicate 
-      ZoneList =  [''' + str(1) + '-' + str(1) + ''']
-      Angle = 180
-      NumDuplicates = 1
-      XVar = 1
-      YVar = 2
-      ZVar = 3''')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
+    if dataset.variable('X').min() > -0.01 and rotationRate != 0:
+
+        print('\tPeriodic boundary detected')
+        tecplot.macro.execute_command('''$!AxialDuplicate 
+          ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
+          Angle = 180
+          NumDuplicates = 1
+          XVar = 1
+          YVar = 2
+          ZVar = 3''')
+
+        tecplot.macro.execute_command('''$!AxialDuplicate 
+          ZoneList =  [''' + str(1) + '-' + str(1) + ''']
+          Angle = 180
+          NumDuplicates = 1
+          XVar = 1
+          YVar = 2
+          ZVar = 3''')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
 
 
 def prepareSceneIceGrids():
@@ -473,25 +503,27 @@ def prepareSceneIceGrids():
     plot.fieldmaps(inletRegions + wallRegions + 2).show = False
     plot.fieldmaps(inletRegions + wallRegions + 3).show = False
 
-    # Rotate Data
-    tecplot.macro.execute_command('''$!AxialDuplicate 
-      ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
-      Angle = 180
-      NumDuplicates = 1
-      XVar = 1
-      YVar = 2
-      ZVar = 3''')
+    if dataset.variable('X').min() > -0.01 and rotationRate != 0:
+        print('\tPeriodic boundary detected')
+        # Rotate Data
+        tecplot.macro.execute_command('''$!AxialDuplicate 
+          ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
+          Angle = 180
+          NumDuplicates = 1
+          XVar = 1
+          YVar = 2
+          ZVar = 3''')
 
-    tecplot.macro.execute_command('''$!AxialDuplicate 
-      ZoneList =  [''' + str(inletRegions + wallRegions + 5) + '-' + str(inletRegions + wallRegions + 5) + ''']
-      Angle = 180
-      NumDuplicates = 1
-      XVar = 1
-      YVar = 2
-      ZVar = 3''')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
-    tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
+        tecplot.macro.execute_command('''$!AxialDuplicate 
+          ZoneList =  [''' + str(inletRegions + wallRegions + 5) + '-' + str(inletRegions + wallRegions + 5) + ''']
+          Angle = 180
+          NumDuplicates = 1
+          XVar = 1
+          YVar = 2
+          ZVar = 3''')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
+        tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
 
 
 def prepareSceneIce():
@@ -505,14 +537,16 @@ def prepareSceneIce():
     tecplot.active_frame().plot_type = PlotType.Cartesian3D
     plot = tecplot.active_frame().plot()
 
-    # Rotate Data
-    tecplot.macro.execute_command('''$!AxialDuplicate 
-      ZoneList =  [''' + str( 1) + '-' + str(wallRegions) + ''']
-      Angle = 180
-      NumDuplicates = 1
-      XVar = 1
-      YVar = 2
-      ZVar = 3''')
+    if dataset.variable('X').min() > -0.01 and rotationRate != 0:
+        print('\tPeriodic boundary detected')
+        # Rotate Data
+        tecplot.macro.execute_command('''$!AxialDuplicate 
+          ZoneList =  [''' + str( 1) + '-' + str(wallRegions) + ''']
+          Angle = 180
+          NumDuplicates = 1
+          XVar = 1
+          YVar = 2
+          ZVar = 3''')
 
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{X = 0}')
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Y = 0}')
@@ -617,6 +651,7 @@ def filmthickness():
         plot.contour(0).labels.step = 5
         savePicture("24_FilmThickness")
 
+
 def rwHeatFlow():
     print('RW Required HF (W/m^2)')
     variable = dataset.variable('RW Required HF (W/m^2)')
@@ -633,6 +668,22 @@ def rwHeatFlow():
         plot.contour(0).labels.step = 5
         savePicture("25_RWHeatFlow")
 
+
+def threeDScene(variableName, colormap, reverse, min, max, spacing, folder):
+    print(variableName)
+    variable = dataset.variable(variableName)
+    if variable is not None:
+        plot.contour(0).variable = variable
+        plot.contour(0).colormap_name=colormap
+        plot.contour(0).colormap_filter.reversed=reverse
+        plot.contour(0).levels.reset_levels(np.linspace(min, max, spacing))
+        plot.show_contour = True
+        plot.show_shade = False
+        plot.contour(0).legend.vertical = False
+        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
+        plot.contour(0).legend.position = (50, 5)
+        plot.contour(0).labels.step = 5
+        savePicture(folder)
 
 def feHeatFlow():
     print('FE Required HF (W/m^2)')
@@ -1055,12 +1106,204 @@ def setupslices(variable, foldername, min, max,reverse):
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 
+def setupsliceswrap(variable, foldername, min, max,reverse):
+    print('Slices')
+
+    variabletest = dataset.variable(variable)
+    if variabletest is not None:
+        frame.plot_type = tecplot.constant.PlotType.XYLine
+
+        try:
+            os.mkdir(path.replace("/","\\") + '\\' + folder + '\\'+foldername)
+        except:
+            pass
+        for radius in radii:
+            tecplot.active_frame().plot_type = PlotType.Cartesian3D
+            # extract an arbitrary slice from the surface data on the wing
+            extracted_slice = tecplot.data.extract.extract_slice(
+                origin=(radiusPropeller * radius / 100, 0, 0),
+                normal=(1, 0, 0),
+                source=tecplot.constant.SliceSource.SurfaceZones,
+                dataset=dataset)
+
+            tecplot.active_frame().plot_type = PlotType.XYLine
+            plot = frame.plot()
+            plot.delete_linemaps()
+            extracted_slice.name = str(radius)
+
+            # get x from slice
+            extracted_y = extracted_slice.values('y')
+            extracted_x = extracted_slice.values('X')
+            extracted_z = extracted_slice.values('Z')
+            extracted_variable = extracted_slice.values(variable)
+
+            # copy of data as a numpy array
+            x = extracted_x.as_numpy_array()
+            y = extracted_y.as_numpy_array()
+            z = extracted_z.as_numpy_array()
+            var = extracted_variable.as_numpy_array()
+            arr = np.empty(z.size)
+            dist = np.empty(z.size)
+            i = 0
+            while i < z.size-1:
+
+                for idx, value in np.ndenumerate(z):
+                    if idx[0] > i:
+                        dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
+                    else:
+                        dist[idx[0]] = 100
+                pos = np.argmin(dist)
+
+                y[i+1], y[pos] = y[pos], y[i+1]
+                z[i+1], z[pos] = z[pos], z[i+1]
+                var[i+1], var[pos] = var[pos], var[i+1]
+                i = i+1
+
+
+            for idx, value in np.ndenumerate(z):
+                if idx[0] > 0:
+                    arr[idx[0]] = math.sqrt((y[idx[0]]-y[idx[0]-1])**2+(z[idx[0]]-z[idx[0]-1])**2)+arr[idx[0]-1]
+                else:
+                    arr[idx[0]] =0
+
+            i = 0
+            maxd=0
+            maxind1=0
+            maxind2=0
+            while i < z.size-1:
+
+                for idx, value in np.ndenumerate(z):
+                        dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
+
+                if dist.max() > maxd:
+                     maxind1 = i
+                     maxind2 = np.argmax(dist)
+                     maxd=dist.max();
+
+                i = i+1
+
+
+            if y[maxind1] < y[maxind2]:
+                arr = arr-arr[maxind1]
+
+                try:
+                    arr = np.append(arr[maxind2:arr.size] - (arr.max()-arr.min()), arr[0:maxind2])
+                    z = np.append(z[maxind2:z.size], z[0:maxind2])
+                    y = np.append(z[maxind2:z.size], y[0:maxind2])
+                    var = np.append(var[maxind2:z.size], var[0:maxind2])
+                except:
+                    print("Error1")
+                    print(maxind2)
+                    print(z.size)
+                try:
+                    if z[maxind2] > z[maxind2 + 1]:
+                        arr = -arr
+                except:
+                    print("Error")
+            else:
+                arr = arr - arr[maxind2]
+
+                try:
+                    arr = np.append(arr[(maxind1):arr.size], arr[0:maxind1] + arr.max()-arr.min())
+                    z = np.append(z[maxind1:z.size], z[0:maxind1])
+                    y = np.append(y[maxind1:y.size], y[0:maxind1])
+                    var = np.append(var[maxind1:z.size], var[0:maxind1])
+                except:
+                    print("Error2")
+                try:
+                    if z[maxind1] > z[maxind1+1]:
+                        arr = -arr
+                except:
+                    print("Error")
+            zone = dataset.add_ordered_zone('variable',z.size)
+            zone.values('x')[:] = arr
+            zone.values('y')[:] = var
+
+            # normalize x
+            #xc = (x - x.min()) / (x.max() - x.min())
+            plot.delete_linemaps()
+            #extracted_x[:] = xc
+            extracted_x[:] = arr
+            # switch plot type in current frame
+            # clear plot
+
+
+            # create line plot from extracted zone data
+            cp_linemap = plot.add_linemap(
+                name=zone.name,
+                zone=zone,
+                x=dataset.variable('x'),
+                y=dataset.variable('y'))
+
+            # overlay result on plot in upper right corner
+            text = frame.add_text(str(radius), (50, 95))
+
+            # set style of linemap plot
+            cp_linemap.line.color = tecplot.constant.Color.Blue
+            cp_linemap.line.line_thickness = 0.2
+            cp_linemap.y_axis.reverse = reverse
+
+            # update axes limits to show data
+            plot.view.fit()
+            tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
+            tecplot.active_frame().plot().axes.y_axis(0).title.text = variable
+            tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
+            # tecplot.active_frame().plot().axes.area.left = 15
+
+            tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrap [m]'
+            plot.view.fit()
+            #plot.axes.y_axis(0).min = min
+            #plot.axes.y_axis(0).max = max
+
+            # export image of pressure coefficient as a function of x/c
+            tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
+            text.text_string = ""
+            # tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+
 # Open File
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
 
 
 searchFile(path)
+
+for File in fensapparfiles:
+    parameterFile = True
+    print(File)
+    file1 = open(File, 'r')
+    data = file1.readlines()
+    for line in data:
+        if "FSP_ROTATION_VECTOR_Z" in line:
+            rotationRate = abs(float(line.split(' ')[2]))
+            print(rotationRate)
+        if "FSP_FREESTREAM_TEMPERATURE" in line:
+            temperature = abs(float(line.split(' ')[2]))-273.15
+            print(temperature)
+
+for File in iceparfiles:
+    parameterFile = True
+    file1 = open(File, 'r')
+    data = file1.readlines()
+    for line in data:
+        if "ICE_ROTATION_VECTOR_Z" in line:
+            rotationRate = abs(float(line.split(' ')[2]))
+            print(rotationRate)
+        if "ICE_TEMPERATURE" in line:
+            temperature = float(line.split(' ')[2])
+            print(temperature)
+
+if not parameterFile:
+    root = tkinter.Tk()
+    root.withdraw()
+    a = simpledialog.askstring(title="Input",
+                              prompt="What is the Temperature:")
+    temperature = float(a)
+    root.withdraw()
+    a = simpledialog.askstring(title="Input",
+                              prompt="What is the Rotation Rate:")
+    rotationRate = float(a)
+
 createdatfile()
 searchFile(path)
 
