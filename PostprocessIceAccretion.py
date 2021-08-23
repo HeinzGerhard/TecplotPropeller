@@ -66,6 +66,7 @@ icedatFiles = []
 icetecplotFiles = []
 icegridFiles = []
 hasinitGrid = False
+initGrid = ""
 folder = "PostPro"
 
 
@@ -84,6 +85,7 @@ def searchFile(Folder):
     global icetecplotFiles
     global icegridFiles
     global hasinitGrid
+    global initGrid
     fensapSolutions = []
     dropletSolutions = []
     iceSolutions = []
@@ -152,18 +154,20 @@ def searchFile(Folder):
                 fensapdatFiles.append(os.path.join(root, Files))
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
-
+                initGrid = "Initialgrid.grid"
 
 def createdatfile():
+    global initGrid
     if not hasinitGrid:
         firstGrid = fd.askopenfilename()
-        os.link(firstGrid, path + "\\Initialgrid.grid")
-    grids.insert(0, os.path.join(path,"Initialgrid.grid"))
+        initGrid = "Initialgrid.grid"
+        os.link(firstGrid, path + "\\" + initGrid)
+    grids.insert(0, os.path.join(path,initGrid))
 
     for i in range(len(fensapSolutions)):
         if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") and not fensaptecplotFiles.__contains__(fensapSolutions[i]+".soln.plt"):
             print("Convert " + fensapSolutions[i])
-            str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i] + "\" \"" + fensapSolutions[i] + "\""
+            str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i].replace("\\", "/") + "\" \"" + fensapSolutions[i] + "\""
             os.system(str)
             #print(str)
     for i in range(len(dropletSolutions)):
@@ -360,10 +364,10 @@ def icescenes():
     plot.show_shade = False
     slice_0 = plot.slice(0)
     slice_0.slice_source=SliceSource.SurfaceZones
-    slice_0.edge.show=True
-    slice_0.contour.show=False
-    plot.show_shade=False
-    slice_0.edge.line_thickness=0.1
+    slice_0.edge.show = True
+    slice_0.contour.show = False
+    plot.show_shade = False
+    slice_0.edge.line_thickness = 0.1
     # Turn on slice and get handle to slice object
     plot.show_slices = True
 
@@ -377,20 +381,20 @@ def icescenes():
     # Turn on contours of X Velocity on the slice
 
     plot.view.width = 0.1
-    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.position = (8.66775, 0.00233312, -0.0198978)
     plot.view.psi = 90.00
     plot.view.theta = -90.00
     plot.view.alpha = 180.00
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\45_IceContour')
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
     except:
         pass
     for radius in radii:
 
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', picturewidth, supersample=1)
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', picturewidth, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
@@ -1018,7 +1022,7 @@ def savePicture(name):
         plot.view.theta = view[6]
         plot.view.alpha = view[7]
 
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + view[0] + ".png",
+        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + view[0] + '.png',
                                 width=picturewidth,
                                 region=ExportRegion.AllFrames,
                                 supersample=1,
@@ -1315,6 +1319,13 @@ for File in fensapparfiles:
         if "FSP_FREESTREAM_TEMPERATURE" in line:
             temperature = abs(float(line.split(' ')[2]))-273.15
             print(temperature)
+        if "GLB_FILE_GRID" in line:
+            testString = os.path.join(path, line.split(' ')[2].replace("\"", "").replace("\n", ""))
+            print(testString)
+            if os.path.isfile(testString):
+                initGrid = line.split(' ')[2].replace("\n", "").replace("\"", "")
+                print(initGrid)
+                hasinitGrid = True
 
 for File in iceparfiles:
     parameterFile = True
