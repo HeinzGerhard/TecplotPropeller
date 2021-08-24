@@ -236,7 +236,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
         except:
-            pass
+            print("Error creating Plots Folder")
 
         frame = tecplot.active_frame()
         plot = frame.plot()
@@ -248,6 +248,7 @@ def mainRun():
         setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
         setupslices('ShearStress','31_ShearStress', 0, 50, False)
         setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 50, False)
+        setupsliceswrap('Static temperature (K)', None, '32_Temperature', None, None, False)
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
@@ -285,11 +286,15 @@ def mainRun():
             os.mkdir(path.replace("/","\\") + "\\" + folder)
         except:
             pass
+        try:
+            os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
+        except:
+            print("Error creating Plots Folder")
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
         setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
-        setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '38_RWTotal', 0, None, False)
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '39_RWTotal', 0, None, False)
         threeDScene('Mass Caught (kg/m^2s)', 'Magma', True, 0, None, 21, "22_MassCaught")
         icethickness()
         walltemperature()
@@ -307,7 +312,6 @@ def mainRun():
         setupsliceswrap('RW Film height (micron)', None, '39_RW_Film_Height',0, 10, False)
         setupsliceswrap('Ice thickness  (m)', None, '35_IceThickness', 0, None, False)
         setupsliceswrap('RW Required HF (W/m^2)', None, '38_RWHeatFlow', 0, None, False)
-        setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '39_RWTotal', 0, None, False)
 
     for File in iceGrids:
         print('Working on File ' + File)
@@ -444,19 +448,19 @@ def prepareScene():
     # Hide Inlets
     i = 1
     while (i <= inletRegions):
-        plot.fieldmaps(i).show = False
+        tecplot.active_frame().plot().fieldmaps(i).show = False
         i = i + 1
 
     i = inletRegions+1
 
     while (i <= inletRegions+wallRegions):
-        plot.fieldmaps(i).mesh.line_thickness = 0.05
+        tecplot.active_frame().plot().fieldmaps(i).mesh.line_thickness = 0.05
         i = i + 1
 
     # Hide Outlet and periodics
-    plot.fieldmaps(inletRegions + wallRegions + 1).show = False
-    plot.fieldmaps(inletRegions + wallRegions + 2).show = False
-    plot.fieldmaps(inletRegions + wallRegions + 3).show = False
+    tecplot.active_frame().plot().fieldmaps(inletRegions + wallRegions + 1).show = False
+    tecplot.active_frame().plot().fieldmaps(inletRegions + wallRegions + 2).show = False
+    tecplot.active_frame().plot().fieldmaps(inletRegions + wallRegions + 3).show = False
 
     # Rotate Data
 
@@ -675,6 +679,7 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder):
         plot.contour(0).legend.position = (50, 5)
         plot.contour(0).labels.step = 5
         savePicture(folder)
+
 
 def feHeatFlow():
     print('FE Required HF (W/m^2)')
@@ -1214,6 +1219,7 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 try:
                     if z[maxind2] > z[maxind2 + 1]:
                         arr = -arr
+                        print("Flip Plot")
                 except:
                     print("Error")
             else:
@@ -1244,14 +1250,14 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
 
             # create line plot from extracted zone data
             linemap = plot.add_linemap(
-                name=zone.name,
+                name=variable,
                 zone=zone,
                 x=dataset.variable('x'),
                 y=dataset.variable('y'))
 
 
             # overlay result on plot in upper right corner
-            text = frame.add_text(str(radius), (50, 95))
+            text = frame.add_text("Position: " + str(radius), (50, 95))
 
             # set style of linemap plot
             linemap.line.color = tecplot.constant.Color.Blue
@@ -1268,10 +1274,19 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
             tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [m]'
 
+
+            textmax = frame.add_text("Max: " +str(var.max()), (10, 95))
+            file_object = open(path + '/' + folder + '/Plots/out.csv', 'a+')
+            #file_object.write('\n' + variable+","+pos+'max'+var.max())
+            #file_object.write('\n' + variable+","+pos+'min'+var.min())
+            file_object.write("\n%s,%s,max,%s"%(variable, str(radius),var.max()))
+            file_object.write("\n%s,%s,min,%s"%(variable, str(radius),var.min()))
+            plot.legend.show = False
+
             if variable2 is not None:
                 zone.values('z')[:] = var2
                 linemap2 = plot.add_linemap(
-                    name=zone.name,
+                    name=variable2,
                     zone=zone,
                     x=dataset.variable('x'),
                     y=dataset.variable('z'))
@@ -1283,6 +1298,15 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 tecplot.active_frame().plot().axes.y_axis(1).title.title_mode = AxisTitleMode.UseText
                 tecplot.active_frame().plot().axes.y_axis(1).title.text = variable2
                 tecplot.active_frame().plot().axes.y_axis(1).title.offset = 11
+                plot.legend.show = True
+                plot.legend.position = (90, 88)
+                plot.legend.anchor_alignment = AnchorAlignment.MiddleRight
+                textmax.text_string = ("Max: " + str(var.max()) + "\nMax: "+ str(var2.max()))
+                file_object.write("\n%s,%s,max,%s"%(variable2, str(radius),var2.max()))
+                file_object.write("\n%s,%s,min,%s"%(variable2, str(radius),var2.min()))
+                #file_object.write('\n'+ variable2+","+pos+'max'+var2.max())
+                #file_object.write('\n'+ variable2+","+pos+'min'+var2.min())
+
 
             plot.view.fit()
             plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
@@ -1294,9 +1318,13 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             if maxy is not None:
                 plot.axes.y_axis(0).max = maxy
 
+
             # export image of pressure coefficient as a function of x/c
             tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
             text.text_string = ""
+            textmax.text_string = ""
+            file_object.close()
+
             # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 
