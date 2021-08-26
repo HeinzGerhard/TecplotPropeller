@@ -236,7 +236,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
         except:
-            print("Error creating Plots Folder")
+            print("Warning: Error creating Plots Folder")
 
         frame = tecplot.active_frame()
         plot = frame.plot()
@@ -249,6 +249,8 @@ def mainRun():
         setupslices('ShearStress','31_ShearStress', 0, 50, False)
         setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 50, False)
         setupsliceswrap('Static temperature (K)', None, '32_Temperature', None, None, False)
+        setupsliceswrap('y-plus', None, '30_YPlus', 0, 4, False)
+        setupsliceswrap('Classical heat flux (W/m^2)', None, '30_HeatFlux', None, None, True)
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
@@ -263,10 +265,15 @@ def mainRun():
             os.mkdir(path.replace("/","\\") + "\\" + folder)
         except:
             pass
+        try:
+            os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
+        except:
+            print("Warning: Error creating Plots Folder")
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
+        plot = frame.plot()
         setDatasetValues()
         prepareScene()
-        collection()
+        threeDScene('Collection efficiency-Droplet', 'Magma', True, 0, 1, 21, "11_CollectionEfficiency")
         dropletLWC()
         #setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
         #setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
@@ -289,7 +296,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
         except:
-            print("Error creating Plots Folder")
+            print("DEBUG: Error creating Plots Folder")
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
@@ -345,9 +352,11 @@ def setDatasetValues():
     inletRegions = 0
     eidValues = 0
     for zone in zones:
-        if "WALL" in zone:
+        if ": rotated " in zone: # Delete rotated Zones
+            tecplot.active_frame().dataset.delete_zones( tecplot.active_frame().dataset.zone(zone))
+        elif "WALL" in zone:
             wallRegions = wallRegions+1
-        if "INLET" in zone:
+        elif "INLET" in zone:
             inletRegions = inletRegions+1
     for variable in variables:
         if "EIDHS" in variable:
@@ -563,22 +572,6 @@ def prepareSceneIce():
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
 
 
-def collection():
-    print('Collection efficiency-Droplet')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable= dataset.variable('Collection efficiency-Droplet')
-    plot.contour(0).colormap_name = 'Magma'
-    plot.contour(0).colormap_filter.reversed=True
-    plot.contour(0).levels.reset_levels(np.linspace(0, 1, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("11_CollectionEfficiency")
-
-
 def dropletLWC():
     print('Droplet LWC (kg/m^3)')
     #plot.contour(0).variable_index = 29
@@ -594,6 +587,7 @@ def dropletLWC():
     plot.contour(0).labels.step = 5
     savePicture("12_DropletLWC")
     slices("46_LWC")
+
 
 def icethickness():
     print('Ice thickness  (m)')
@@ -666,6 +660,7 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder):
     variable = dataset.variable(variableName)
     if variable is not None:
         tecplot.active_frame().plot_type = PlotType.Cartesian3D
+        plot = tecplot.active_frame().plot()
         plot.contour(0).variable = variable
         plot.contour(0).colormap_name=colormap
         plot.contour(0).colormap_filter.reversed=reverse
@@ -1258,7 +1253,7 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
 
             # overlay result on plot in upper right corner
             text = frame.add_text("Position: " + str(radius), (50, 95))
-
+            text.anchor = TextAnchor.Center
             # set style of linemap plot
             linemap.line.color = tecplot.constant.Color.Blue
             linemap.line.line_thickness = 0.2
@@ -1275,7 +1270,10 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [m]'
 
 
-            textmax = frame.add_text("Max: " +str(var.max()), (10, 95))
+            if not reverse:
+                textmax = frame.add_text("Max: " +str(var.max()), (10, 95))
+            else:
+                textmax = frame.add_text("Min: " +str(var.min()), (10, 95))
             file_object = open(path + '/' + folder + '/Plots/out.csv', 'a+')
             #file_object.write('\n' + variable+","+pos+'max'+var.max())
             #file_object.write('\n' + variable+","+pos+'min'+var.min())
@@ -1307,7 +1305,6 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 #file_object.write('\n'+ variable2+","+pos+'max'+var2.max())
                 #file_object.write('\n'+ variable2+","+pos+'min'+var2.min())
 
-
             plot.view.fit()
             plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
             plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
@@ -1317,7 +1314,6 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
 
             if maxy is not None:
                 plot.axes.y_axis(0).max = maxy
-
 
             # export image of pressure coefficient as a function of x/c
             tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
