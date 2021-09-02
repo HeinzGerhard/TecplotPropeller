@@ -30,15 +30,16 @@ logging.basicConfig(level=logging.DEBUG)
 if '-c' in sys.argv:
     tecplot.session.connect()
 
-turbVariables = 1
-eidValues = 0  # 4
-wallRegions = 3  # 5
-inletRegions = 2
-rotationRate = 3500
-temperature = -5
-radiusPropeller = 21 * 0.0254 / 2
-picturewidth = 1920*2
+turbVariables = 1 # Amount of turbulent variables (1 for SA, 2 fo Komega, automatically detected
+eidValues = 0  # Extended icing data variables, automatically detected
+wallRegions = 3  # Wall regions, automatically detected
+inletRegions = 2  # inlet regions, automatically detected
+rotationRate = 3500  # Rotation Rate, automatically detected
+temperature = -5  # Temperature, automatically detected
+radiusPropeller = 21 * 0.0254 / 2 # Propeller radius in meter
+picturewidth = 1920*2  # Amount of picels for pictures
 parameterFile = False
+
 views = [
     # ["Name", View width, X, Y, Z, Psi, Theta, Alpha]
     ["Bottom", 0.28, -0.13837, -0.0118782, 10, 0.00, 0.00, 0.00],
@@ -47,7 +48,9 @@ views = [
     ["ISO2", 0.168492, -19.4223, 8.33795, -11.4911, 118.63, 113.39, 153.57],
     ["Tip-1", 0.0508641, 1.91029, -0.230812, -0.395172, 102.43, -82.13, 178.55],
     ["Tip-2", 0.0507068, 1.94302, -0.0404362, 0.0541199, 87.78, -88.66, -178.21],
-    ["Tip-3", 0.0494703, 1.92428, 0.108381, -0.250, 97.69, -93.31, 162.90]
+    ["Tip-3", 0.0494703, 1.92428, 0.108381, -0.250, 97.69, -93.31, 162.90],
+    ["Back", 0.28, 0.135629, 24.9313, 0.007376, 90, 180, 180],
+    ["Front", 0.28, 0.134865, -24.9313, -0.0132364, 90, -0, 180]
 ]
 radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
 
@@ -108,13 +111,13 @@ def searchFile(Folder):
                 cht3D = True
 
         for Files in files:
-            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp")and not Files.endswith(".plt"):
+            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 fensapSolutions.append(os.path.join(root, Files))
                 if cht3D: # Include Initial Grid if CHT3D Calc because there might be mult. simulations without new mesh
-                    grids.append(os.path.join(path,"Initialgrid.grid"))
+                    grids.append(os.path.join(path, "Initialgrid.grid"))
             if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 dropletSolutions.append(os.path.join(root, Files))
-            if Files.startswith("swimsol.ice.")and not Files.endswith(".dat") and not Files.endswith(".plt"):
+            if Files.startswith("swimsol.ice.") and not Files.endswith(".dat") and not Files.endswith(".plt"):
                 iceSolutions.append(os.path.join(root, Files))
             if Files.startswith("ice.ice.") and Files.endswith(".stl"):
                 iceGrids.append(os.path.join(root, Files))
@@ -124,11 +127,11 @@ def searchFile(Folder):
                 fensaptecplotFiles.append(os.path.join(root, Files))
             if Files.endswith("drop.plt"):
                 droplettecplotFiles.append(os.path.join(root, Files))
-            if Files.startswith("soln.fensap.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
+            if Files.startswith("soln.fensap.") and Files.endswith(".dat") and not Files.endswith(".disp"):
                 fensapdatFiles.append(os.path.join(root, Files))
-            if Files.startswith("droplet.drop.") and  Files.endswith(".dat") and not Files.endswith(".disp"):
+            if Files.startswith("droplet.drop.") and Files.endswith(".dat") and not Files.endswith(".disp"):
                 dropletdatFiles.append(os.path.join(root, Files))
-            if Files.startswith("swimsol.ice.") and  Files.endswith(".dat") and not Files.endswith(".plt"):
+            if Files.startswith("swimsol.ice.") and Files.endswith(".dat") and not Files.endswith(".plt"):
                 icedatFiles.append(os.path.join(root, Files))
             if Files.startswith("swimsol.ice.") and Files.endswith(".plt") and not Files.endswith(".disp"):
                 icetecplotFiles.append(os.path.join(root, Files))
@@ -155,6 +158,7 @@ def searchFile(Folder):
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
                 initGrid = "Initialgrid.grid"
+
 
 def createdatfile():
     global initGrid
@@ -191,6 +195,7 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
+            os.remove(fensapdatFiles[i])  # delete dat file to free up space on the drive
     for i in range(len(dropletdatFiles)):
         if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat",".drop.plt")):
             print('Working on File ' + dropletdatFiles[i])
@@ -199,6 +204,7 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
+            os.remove(dropletdatFiles[i])  # delete dat file to free up space on the drive
     for i in range(len(icedatFiles)):
         if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat",".ice.plt")):
             print('Working on File ' + icedatFiles[i])
@@ -207,6 +213,7 @@ def createcplotFile():
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
+            os.remove(icedatFiles[i])  # delete dat file to free up space on the drive
 
 
 def mainRun():
@@ -244,7 +251,17 @@ def mainRun():
         convertData()
         saveData()
         prepareScene()
-        saveViews()
+        threeDScene('Density (kg/m^3)', 'Large Rainbow', False, 1.2, 1.4, 21, "02_Density", "42_Density")
+        threeDScene('Pressure (N/m^2)', 'Large Rainbow', False, 97000, 106000, 21, "01_Pressure", "41_Pressure")
+        threeDScene('vmag', 'Large Rainbow', False, 0, 150, 21, "07_Velocity", "43_Velocity")
+        threeDScene('ShearStress', 'Large Rainbow', False, 0, 150, 21, "03_ShearStress")
+        threeDScene('tauz', 'Large Rainbow', False, -4100, 4100, 21, "04_PressureTZ")
+        threeDScene('pz', 'Large Rainbow', False, -4100, 4100, 21, "05_PressureZ")
+        threeDScene('mzt', 'Large Rainbow', False, -1200, 1200, 21, "6_MomentZ")
+        mesh()
+        meshslices()
+        IsoTurb()
+        threeDScene('Static Temperature (K)', 'Diverging - Blue/Red', False, None , None, 21, "09_Temperature")
         setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
         setupslices('ShearStress','31_ShearStress', 0, 50, False)
         setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 50, False)
@@ -255,10 +272,10 @@ def mainRun():
     for File in droplettecplotFiles:
         print('Working on File ' + File)
         folder = "PostPro"
-        try:
+
+        try:  # Create required folders. In except due to error if folder exists
             if str(File.split(".")[2]).isnumeric():
                 folder = "PostPro"+ str(File.split(".")[2])
-
         except:
             pass
         try:
@@ -269,14 +286,13 @@ def mainRun():
             os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
         except:
             print("Warning: Error creating Plots Folder")
+
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
         plot = frame.plot()
         setDatasetValues()
         prepareScene()
         threeDScene('Collection efficiency-Droplet', 'Magma', True, 0, 1, 21, "11_CollectionEfficiency")
-        dropletLWC()
-        #setupslices('Droplet LWC (kg/m^3)', '34_DropletLWC', 0, 0.005, False)
-        #setupslices('Collection efficiency-Droplet', '33_CollectionEff', 0, 1, False)
+        threeDScene('Droplet LWC (kg/m^3)', 'Magma', True, 0, 0.002, 21, "12_DropletLWC", "46_LWC")
         setupsliceswrap('Droplet LWC (kg/m^3)', None, '34_DropletLWC', 0, 0.005, False)
         setupsliceswrap('Collection efficiency-Droplet', None, '33_CollectionEff', 0, 1, False)
         setupsliceswrap('Collection efficiency-Droplet', 'Droplet LWC (kg/m^3)', '35_Collection', 0, 1, False)
@@ -303,17 +319,15 @@ def mainRun():
         setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
         setupsliceswrap('RW Required HF (W/m^2)', 'RW Film height (micron)', '39_RWTotal', 0, None, False)
         threeDScene('Mass Caught (kg/m^2s)', 'Magma', True, 0, None, 21, "22_MassCaught")
-        icethickness()
-        walltemperature()
-        filmthickness()
-        rwHeatFlow()
-        rwWaterHF()
-        rwConvectionHF()
-        rwEvaporationHF()
-        feHeatFlow()
+        threeDScene('21_Icethickness', 'Magma', True, None, None, 21, "21_Icethickness")
+        threeDScene('Wall Temperature (C)', 'Diverging - Blue/Red', False, None, None, 21, "23_Temperature")
+        threeDScene('Film Thickness (micron)', 'Diverging - Blue/Red', False, None, None, 21, "24_FilmThickness")
+        threeDScene('RW Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 50000, 21, "25_RWHeatFlow")
+        threeDScene('RW Water Droplet HF (W/m^2)', 'Diverging - Blue/Red', True, -10000, 000000, 21, "27_RWWaterHeatFlow")
+        threeDScene('RW Convection HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21, "28_RWConvectionHeatFlow")
+        threeDScene('RW Evaporation HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21, "28_RWEvaporationHeatFlow")
+        threeDScene('FE Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 100000, 21, "26_FEHeatFlow")
         threeDScene('RW Film height (micron)', 'Diverging - Blue/Red',False,0, 10, 21,"29_RW_Film_Height")
-        # setupslices('Ice thickness  (m)', '35_IceThickness', 0, None, False)
-        # setupslices('Wall Temperature (C)', '36_WallTemp', -15, 2, False)
         setupsliceswrap('Wall Temperature (C)', None, '36_WallTemp', -15, 2, False)
         setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
         setupsliceswrap('RW Film height (micron)', None, '39_RW_Film_Height',0, 10, False)
@@ -329,7 +343,7 @@ def mainRun():
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder)
+            os.mkdir(path.replace("/", "\\") + "\\" + folder)
         except:
             pass
 
@@ -353,7 +367,7 @@ def setDatasetValues():
     eidValues = 0
     for zone in zones:
         if ": rotated " in zone: # Delete rotated Zones
-            tecplot.active_frame().dataset.delete_zones( tecplot.active_frame().dataset.zone(zone))
+            tecplot.active_frame().dataset.delete_zones(tecplot.active_frame().dataset.zone(zone))
         elif "WALL" in zone:
             wallRegions = wallRegions+1
         elif "INLET" in zone:
@@ -376,7 +390,7 @@ def icescenes():
     plot.show_contour = False
     plot.show_shade = False
     slice_0 = plot.slice(0)
-    slice_0.slice_source=SliceSource.SurfaceZones
+    slice_0.slice_source = SliceSource.SurfaceZones
     slice_0.edge.show = True
     slice_0.contour.show = False
     plot.show_shade = False
@@ -572,90 +586,7 @@ def prepareSceneIce():
     tecplot.macro.execute_command('$!GlobalThreeD RotateOrigin{Z = 0}')
 
 
-def dropletLWC():
-    print('Droplet LWC (kg/m^3)')
-    #plot.contour(0).variable_index = 29
-    plot.contour(0).variable= dataset.variable('Droplet LWC (kg/m^3)')
-    plot.contour(0).colormap_name = 'Magma'
-    plot.contour(0).colormap_filter.reversed=True
-    plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("12_DropletLWC")
-    slices("46_LWC")
-
-
-def icethickness():
-    print('Ice thickness  (m)')
-    variable = dataset.variable('Ice thickness  (m)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name = 'Magma'
-        plot.contour(0).colormap_filter.reversed=True
-        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("21_Icethickness")
-
-
-def walltemperature():
-    print('Wall Temperature (C)')
-    variable = dataset.variable('Wall Temperature (C)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("23_Temperature")
-
-
-def filmthickness():
-    print('Film Thickness (micron)')
-    variable = dataset.variable('Film Thickness (micron)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        # plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("24_FilmThickness")
-
-
-def rwHeatFlow():
-    print('RW Required HF (W/m^2)')
-    variable = dataset.variable('RW Required HF (W/m^2)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        plot.contour(0).colormap_filter.reversed=False
-        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("25_RWHeatFlow")
-
-
-def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder):
+def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder, sliceFolder=""):
     print(variableName)
     variable = dataset.variable(variableName)
     if variable is not None:
@@ -674,263 +605,27 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder):
         plot.contour(0).legend.position = (50, 5)
         plot.contour(0).labels.step = 5
         savePicture(folder)
+        if sliceFolder != "":
+            slices(sliceFolder)
 
 
-def feHeatFlow():
-    print('FE Required HF (W/m^2)')
-    variable = dataset.variable('FE Required HF (W/m^2)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        plot.contour(0).colormap_filter.reversed=False
-        plot.contour(0).levels.reset_levels(np.linspace(0, 100000, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("26_FEHeatFlow")
+def savePicture(name):
+    try:
+        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\' + name )
+    except:
+        pass
+    for view in views:
+        plot.view.width = view[1]
+        plot.view.position = (view[2], view[3], view[4])
+        plot.view.psi = view[5]
+        plot.view.theta = view[6]
+        plot.view.alpha = view[7]
 
-
-def rwWaterHF():
-    print('RW Water Droplet HF (W/m^2)')
-    variable = dataset.variable('RW Water Droplet HF (W/m^2)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        plot.contour(0).colormap_filter.reversed=True
-        plot.contour(0).levels.reset_levels(np.linspace(-10000, 0000, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("27_RWWaterHeatFlow")
-
-
-def rwConvectionHF():
-    print('RW Convection HF (W/m^2)')
-    variable = dataset.variable('RW Convection HF (W/m^2)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name = 'Diverging - Blue/Red'
-        plot.contour(0).colormap_filter.reversed = False
-        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("28_RWConvectionHeatFlow")
-
-
-def rwEvaporationHF():
-    print('RW Evaporation HF (W/m^2)')
-    variable = dataset.variable('RW Evaporation HF (W/m^2)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name = 'Diverging - Blue/Red'
-        plot.contour(0).colormap_filter.reversed = False
-        plot.contour(0).levels.reset_levels(np.linspace(0, 5000, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("28_RWEvaporationHeatFlow")
-
-
-def saveData():
-    print('Save Data')
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               33 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("/",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               30 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\PZ.txt' + "'")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               36 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
-
-
-def saveViews():
-    density()
-    pressure()
-    velocity()
-    shearstress()
-    pressuretz()
-    pressurez()
-    momentz()
-    mesh()
-    meshslices()
-    IsoTurb()
-    statictemperature()
-
-
-def statictemperature():
-    print('Static Temperature (K)')
-    variable = dataset.variable('Static Temperature (K)')
-    if variable is not None:
-        plot.contour(0).variable = variable
-        plot.contour(0).colormap_name='Diverging - Blue/Red'
-        #plot.contour(0).levels.reset_levels(np.linspace(0, 0.002, 21))
-        plot.show_contour = True
-        plot.show_shade = False
-        plot.contour(0).legend.vertical = False
-        plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-        plot.contour(0).legend.position = (50, 5)
-        plot.contour(0).labels.step = 5
-        savePicture("09_Temperature")
-
-
-def density():
-    print('Density')
-    plot.contour(0).variable_index = 3
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(1.2, 1.4, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    savePicture("02_Density")
-    slices("42_Density")
-
-
-def mesh():
-    print('Mesh')
-    plot.show_contour = False
-    plot.show_shade = True
-    plot.show_mesh = True
-    savePicture("50_Mesh")
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.show_mesh = False
-
-
-def IsoTurb():
-    print('turbulent viscosity (kg/m s)')
-    plot.contour(0).variable= dataset.variable('turbulent viscosity (kg/m s)')
-    plot.show_contour = False
-    plot.show_shade = True
-    plot.show_mesh = False
-    plot.show_isosurfaces=False
-    plot.show_isosurfaces=True
-    plot.isosurface(0).isosurface_values[0]=2e-05
-    plot.isosurface(0).contour.show=True
-    plot.isosurface(0).contour.show=False
-    plot.isosurface(0).shade.show=False
-    plot.isosurface(0).shade.show=True
-    plot.isosurface(0).shade.color=Color.Red
-    savePicture("08_IsoTurb")
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.show_mesh = False
-    plot.show_isosurfaces=False
-
-
-def pressure():
-    print('Pressure')
-    plot.contour(0).variable_index = 4
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(97000, 106000, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("01_Pressure")
-    slices("41_Pressure")
-
-
-def velocity():
-    print('Velocity')
-    plot.contour(0).variable_index = 40 + turbVariables+eidValues
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(0, 150, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("07_Velocity")
-    slices("43_Velocity")
-
-
-def shearstress():
-    print('ShearStress')
-    plot.contour(0).variable_index = 36 + turbVariables+eidValues
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(0, 150, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("03_ShearStress")
-
-
-def pressuretz():
-    print('Pressure TZ')
-    plot.contour(0).variable_index = 32 + turbVariables+eidValues
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(-4100, 4100, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("04_PressureTZ")
-
-
-def pressurez():
-    print('Pressure Z')
-    plot.contour(0).variable_index = 29 + turbVariables+eidValues
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(-4100, 4100, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("05_PressureZ")
-
-
-def momentz():
-    print('moment TZ')
-    plot.contour(0).variable_index = 35 + turbVariables+eidValues
-    plot.contour(0).colormap_name = 'Large Rainbow'
-    plot.contour(0).levels.reset_levels(np.linspace(-1200, 1200, 21))
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.contour(0).legend.vertical = False
-    plot.contour(0).legend.anchor_alignment = AnchorAlignment.BottomCenter
-    plot.contour(0).legend.position = (50, 5)
-    plot.contour(0).labels.step = 5
-    savePicture("06_MomentZ")
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\' + name + '\\' + view[0] + '.png',
+                                width=picturewidth,
+                                region=ExportRegion.AllFrames,
+                                supersample=1,
+                                convert_to_256_colors=False)
 
 
 def slices(name):
@@ -968,6 +663,63 @@ def slices(name):
         text.text_string = ""
 
     plot.show_slices = False
+
+
+def saveData():
+    print('Save Data')
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               33 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("/",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               30 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\PZ.txt' + "'")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               36 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
+
+
+def mesh():
+    print('Mesh')
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = True
+    savePicture("50_Mesh")
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+
+
+def IsoTurb():
+    print('turbulent viscosity (kg/m s)')
+    plot.contour(0).variable= dataset.variable('turbulent viscosity (kg/m s)')
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = False
+    plot.show_isosurfaces=False
+    plot.show_isosurfaces=True
+    plot.isosurface(0).isosurface_values[0]=2e-05
+    plot.isosurface(0).contour.show=True
+    plot.isosurface(0).contour.show=False
+    plot.isosurface(0).shade.show=False
+    plot.isosurface(0).shade.show=True
+    plot.isosurface(0).shade.color=Color.Red
+    savePicture("08_IsoTurb")
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+    plot.show_isosurfaces=False
 
 
 def meshslices():
@@ -1008,25 +760,6 @@ def meshslices():
     plot.show_slices = False
     slice_0.contour.show=True
     slice_0.mesh.show=False
-
-
-def savePicture(name):
-    try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\' + name )
-    except:
-        pass
-    for view in views:
-        plot.view.width = view[1]
-        plot.view.position = (view[2], view[3], view[4])
-        plot.view.psi = view[5]
-        plot.view.theta = view[6]
-        plot.view.alpha = view[7]
-
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\' + name + '\\' + view[0] + '.png',
-                                width=picturewidth,
-                                region=ExportRegion.AllFrames,
-                                supersample=1,
-                                convert_to_256_colors=False)
 
 
 def setupslices(variable, foldername, min, max,reverse):
@@ -1193,7 +926,7 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 if dist.max() > maxd:
                      maxind1 = i
                      maxind2 = np.argmax(dist)
-                     maxd=dist.max();
+                     maxd=dist.max()
 
                 i = i+1
 
