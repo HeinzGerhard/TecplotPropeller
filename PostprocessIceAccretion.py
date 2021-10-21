@@ -1,6 +1,6 @@
 # Author Nicolas Mueller
 #
-# This code is meant to postprocess the data from the propeller simulations, to extract the thust and the moment, as well
+# This code is meant to postprocess the data from the propeller simulations, to extract the thust and the moment and
 # as pictures and pressure slices
 #
 #
@@ -30,14 +30,14 @@ logging.basicConfig(level=logging.DEBUG)
 if '-c' in sys.argv:
     tecplot.session.connect()
 
-turbVariables = 1 # Amount of turbulent variables (1 for SA, 2 fo Komega, automatically detected
+turbVariables = 1  # Amount of turbulent variables (1 for SA, 2 fo Komega, automatically detected
 eidValues = 0  # Extended icing data variables, automatically detected
 wallRegions = 3  # Wall regions, automatically detected
 inletRegions = 2  # inlet regions, automatically detected
 rotationRate = 3500  # Rotation Rate, automatically detected
 temperature = -5  # Temperature, automatically detected
-radiusPropeller = 21 * 0.0254 / 2 # Propeller radius in meter
-picturewidth = 1920*2  # Amount of picels for pictures
+radiusPropeller = 21 * 0.0254 / 2  # Propeller radius in meter
+picturewidth = 1920 * 2  # Amount of pixels for pictures
 parameterFile = False
 
 views = [
@@ -52,7 +52,7 @@ views = [
     ["Back", 0.28, 0.135629, 24.9313, 0.007376, 90, 180, 180],
     ["Front", 0.28, 0.134865, -24.9313, -0.0132364, 90, -0, 180]
 ]
-radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 98]
+radii = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 94.5, 95, 95.5, 98]
 
 fensapSolutions = []
 dropletSolutions = []
@@ -69,12 +69,12 @@ icedatFiles = []
 icetecplotFiles = []
 icegridFiles = []
 hasinitGrid = False
+insertInitGrid = False
 initGrid = ""
 folder = "PostPro"
 
 
 def searchFile(Folder):
-
     global fensapSolutions
     global dropletSolutions
     global iceSolutions
@@ -105,19 +105,22 @@ def searchFile(Folder):
     cht3D = False
     for root, dirs, files in os.walk(Folder):
         # print('Looking in:',root)
-        for dir in dirs:
+        for directory in dirs:
 
-            if dir == "CHT_compute":
+            if directory == "CHT_compute":
                 cht3D = True
 
         for Files in files:
-            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
+            if Files.startswith("soln.fensap.") and not Files.endswith(".dat") \
+                    and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 fensapSolutions.append(os.path.join(root, Files))
-                if cht3D: # Include Initial Grid if CHT3D Calc because there might be mult. simulations without new mesh
+                if cht3D:  # Include Initial Grid if CHT3D Calc because there might be mult simulations without new mesh
                     grids.append(os.path.join(path, "Initialgrid.grid"))
-            if Files.startswith("droplet.drop.") and not Files.endswith(".dat") and not Files.endswith(".disp") and not Files.endswith(".plt"):
+            if Files.startswith("droplet.drop.") and not Files.endswith(".dat") \
+                    and not Files.endswith(".disp") and not Files.endswith(".plt"):
                 dropletSolutions.append(os.path.join(root, Files))
-            if Files.startswith("swimsol.ice.") and not Files.endswith(".dat") and not Files.endswith(".plt"):
+            if Files.startswith("swimsol.ice.") and not Files.endswith(".dat") \
+                    and not Files.endswith(".plt"):
                 iceSolutions.append(os.path.join(root, Files))
             if Files.startswith("ice.ice.") and Files.endswith(".stl"):
                 iceGrids.append(os.path.join(root, Files))
@@ -162,54 +165,67 @@ def searchFile(Folder):
 
 def createdatfile():
     global initGrid
-    if not hasinitGrid:
-        firstGrid = fd.askopenfilename()
-        initGrid = "Initialgrid.grid"
-        os.link(firstGrid, path + "\\" + initGrid)
-    grids.insert(0, os.path.join(path,initGrid))
 
     for i in range(len(fensapSolutions)):
-        if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") and not fensaptecplotFiles.__contains__(fensapSolutions[i]+".soln.plt"):
+        if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") \
+                and not fensaptecplotFiles.__contains__(fensapSolutions[i] + ".soln.plt"):
+            insertInitialGrid()
             print("Convert " + fensapSolutions[i])
-            str = "CreateDatFiles.bat \"" + path + "\" \"" + grids[i].replace("\\", "/") + "\" \"" + fensapSolutions[i] + "\""
-            os.system(str)
-            #print(str)
+            string = "CreateDatFiles.bat \"" + path + "\" \"" \
+                     + grids[i].replace("\\", "/") + "\" \"" + fensapSolutions[i] + "\""
+            os.system(string)
     for i in range(len(dropletSolutions)):
-        if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat") and not droplettecplotFiles.__contains__(dropletSolutions[i] + ".drop.plt") :
+        if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat") \
+                and not droplettecplotFiles.__contains__(dropletSolutions[i] + ".drop.plt"):
+            insertInitialGrid()
             print("Convert " + dropletSolutions[i])
-            str = "CreateDatFilesDrop.bat \"" + path + "\" \"" + grids[i] + "\" \"" + dropletSolutions[i] + "\""
-            os.system(str)
+            string = "CreateDatFilesDrop.bat \"" + path + "\" \"" \
+                     + grids[i] + "\" \"" + dropletSolutions[i] + "\""
+            os.system(string)
     for i in range(len(iceSolutions)):
-        if not icedatFiles.__contains__(iceSolutions[i] + ".dat") and not icetecplotFiles.__contains__(iceSolutions[i] + ".ice.plt"):
+        if not icedatFiles.__contains__(iceSolutions[i] + ".dat") \
+                and not icetecplotFiles.__contains__(iceSolutions[i] + ".ice.plt"):
             print("Convert " + iceSolutions[i])
-            str = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
-            os.system(str)
+            string = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
+            os.system(string)
 
 
-def createcplotFile():
+def insertInitialGrid():  # Insert initial grid if necessary
+    global initGrid
+    global insertInitGrid
+    if not insertInitGrid:  # Check if it is necessary to insert the initial grid
+        if not hasinitGrid:
+            firstGrid = fd.askopenfilename()
+            initGrid = "Initialgrid.grid"
+            os.link(firstGrid, path + "\\" + initGrid)
+        grids.insert(0, os.path.join(path, initGrid))
+        insertInitGrid = True
+
+
+def createTecplotFile():
     for i in range(len(fensapdatFiles)):
-        if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat",".soln.plt")):
+        if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat", ".soln.plt")):
             print('Working on File ' + fensapdatFiles[i])
-            dataset = tecplot.data.load_tecplot(fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(fensapdatFiles[i].replace(".dat",".soln.plt"),
+            tecplot.data.load_tecplot(fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(fensapdatFiles[i].replace(".dat", ".soln.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
             os.remove(fensapdatFiles[i])  # delete dat file to free up space on the drive
     for i in range(len(dropletdatFiles)):
-        if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat",".drop.plt")):
+        if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat", ".drop.plt")):
             print('Working on File ' + dropletdatFiles[i])
-            dataset = tecplot.data.load_tecplot( dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(dropletdatFiles[i].replace(".dat",".drop.plt"),
+            tecplot.data.load_tecplot(dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(dropletdatFiles[i].replace(".dat", ".drop.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
             os.remove(dropletdatFiles[i])  # delete dat file to free up space on the drive
     for i in range(len(icedatFiles)):
-        if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat",".ice.plt")):
+        if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat", ".ice.plt")):
             print('Working on File ' + icedatFiles[i])
-            dataset = tecplot.data.load_tecplot(icedatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(icedatFiles[i].replace(".dat",".ice.plt"),
+            tecplot.data.load_tecplot(icedatFiles[i], read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(icedatFiles[i].replace(".dat", ".ice.plt"),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
@@ -233,15 +249,15 @@ def mainRun():
         folder = "PostPro"
         try:
             if str(File.split(".")[2]).isnumeric():
-                folder = "PostPro"+ str(File.split(".")[2])
+                folder = "PostPro" + str(File.split(".")[2])
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder)
+            os.mkdir(path.replace("/", "\\") + "\\" + folder)
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
+            os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
             print("Warning: Error creating Plots Folder")
 
@@ -251,6 +267,9 @@ def mainRun():
         convertData()
         saveData()
         prepareScene()
+        # curvature('0_Curvature', None, None, False)
+        # setupsliceswrap('Z Grid K Unit Normal', 'Y Grid K Unit Normal', '0_Curvature2', None, None, False)
+        setupsliceswrap('Pressure (N/m^2)', None, '30_Pressure', 95000, 106000, False)
         threeDScene('Density (kg/m^3)', 'Large Rainbow', False, 1.2, 1.4, 21, "02_Density", "42_Density")
         threeDScene('Pressure (N/m^2)', 'Large Rainbow', False, 97000, 106000, 21, "01_Pressure", "41_Pressure")
         threeDScene('vmag', 'Large Rainbow', False, 0, 150, 21, "07_Velocity", "43_Velocity")
@@ -261,13 +280,16 @@ def mainRun():
         mesh()
         meshslices()
         IsoTurb()
-        threeDScene('Static Temperature (K)', 'Diverging - Blue/Red', False, None , None, 21, "09_Temperature")
-        setupslices('Pressure (N/m^2)','30_Slices', 95000, 105000, True)
-        setupslices('ShearStress','31_ShearStress', 0, 50, False)
-        setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 50, False)
+        threeDScene('Static Temperature (K)', 'Diverging - Blue/Red', False, None, None, 21, "09_Temperature")
+        setupslices('Pressure (N/m^2)', '30_Slices', 95000, 105000, True)
+        setupslices('ShearStress', '31_ShearStress', 0, 50, False)
+        setupsliceswrap('ShearStress', None, '31b_ShearStress', 0, 150, False)
+        setupsliceswrap('ShearStress', 'Classical heat flux (W/m^2)', '31c_ShearStress', 0, None, False)
         setupsliceswrap('Static temperature (K)', None, '32_Temperature', None, None, False)
         setupsliceswrap('y-plus', None, '30_YPlus', 0, 4, False)
         setupsliceswrap('Classical heat flux (W/m^2)', None, '30_HeatFlux', None, None, True)
+        setupsliceswrap('Chordangle', None, '90_Curvature', None, None, False)
+        threeDScene('Chordangle', 'Wild', False, -60, 60, 121, "91_Curvature")
 
     for File in droplettecplotFiles:
         print('Working on File ' + File)
@@ -275,15 +297,15 @@ def mainRun():
 
         try:  # Create required folders. In except due to error if folder exists
             if str(File.split(".")[2]).isnumeric():
-                folder = "PostPro"+ str(File.split(".")[2])
+                folder = "PostPro" + str(File.split(".")[2])
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder)
+            os.mkdir(path.replace("/", "\\") + "\\" + folder)
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
+            os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
             print("Warning: Error creating Plots Folder")
 
@@ -302,15 +324,15 @@ def mainRun():
         folder = "PostPro"
         try:
             if str(File.split(".")[2]).isnumeric():
-                folder = "PostPro"+ str(File.split(".")[2])
+                folder = "PostPro" + str(File.split(".")[2])
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder)
+            os.mkdir(path.replace("/", "\\") + "\\" + folder)
         except:
             pass
         try:
-            os.mkdir(path.replace("/","\\") + "\\" + folder + "\\Plots")
+            os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
             print("DEBUG: Error creating Plots Folder")
         dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
@@ -323,35 +345,47 @@ def mainRun():
         threeDScene('Wall Temperature (C)', 'Diverging - Blue/Red', False, None, None, 21, "23_Temperature")
         threeDScene('Film Thickness (micron)', 'Diverging - Blue/Red', False, None, None, 21, "24_FilmThickness")
         threeDScene('RW Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 50000, 21, "25_RWHeatFlow")
-        threeDScene('RW Water Droplet HF (W/m^2)', 'Diverging - Blue/Red', True, -10000, 000000, 21, "27_RWWaterHeatFlow")
-        threeDScene('RW Convection HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21, "28_RWConvectionHeatFlow")
-        threeDScene('RW Evaporation HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21, "28_RWEvaporationHeatFlow")
+        threeDScene('RW Water Droplet HF (W/m^2)', 'Diverging - Blue/Red', True, -10000, 000000, 21,
+                    "27_RWWaterHeatFlow")
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Water Droplet HF (W/m^2)', '39_RWTotal-Droplet', None, None,
+                        False)
+        setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
+        threeDScene('RW Convection HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21,
+                    "28_RWConvectionHeatFlow")
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Convection HF (W/m^2)', '39_RWTotal-Convection', 0, None, False)
+        threeDScene('RW Evaporation HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21,
+                    "28_RWEvaporationHeatFlow")
+        setupsliceswrap('RW Required HF (W/m^2)', 'RW Evaporation HF (W/m^2)', '39_RWTotal-Evaporation', 0, None, False)
         threeDScene('FE Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 100000, 21, "26_FEHeatFlow")
-        threeDScene('RW Film height (micron)', 'Diverging - Blue/Red',False,0, 10, 21,"29_RW_Film_Height")
+        threeDScene('RW Film height (micron)', 'Diverging - Blue/Red', False, 0, 10, 21, "29_RW_Film_Height")
         setupsliceswrap('Wall Temperature (C)', None, '36_WallTemp', -15, 2, False)
         setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
-        setupsliceswrap('RW Film height (micron)', None, '39_RW_Film_Height',0, 10, False)
+        setupsliceswrap('RW Film height (micron)', None, '39_RW_Film_Height', 0, 10, False)
         setupsliceswrap('Ice thickness  (m)', None, '35_IceThickness', 0, None, False)
         setupsliceswrap('RW Required HF (W/m^2)', None, '38_RWHeatFlow', 0, None, False)
 
     for File in iceGrids:
-        print('Working on File ' + File)
-        folder = "PostPro"
-        try:
-            if str(File.split(".")[2]).isnumeric():
-                folder = "PostPro"+ str(File.split(".")[2])
-        except:
-            pass
-        try:
-            os.mkdir(path.replace("/", "\\") + "\\" + folder)
-        except:
-            pass
+        createPostProFolder(File)
 
         dataset = tecplot.data.load_tecplot(fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
         dataset = tecplot.data.load_stl(File)
         setDatasetValues()
         prepareSceneIceGrids()
         icescenes()
+
+
+def createPostProFolder(File):
+    print('Working on File ' + File)
+    folder = "PostPro"
+    try:
+        if str(File.split(".")[2]).isnumeric():
+            folder = "PostPro" + str(File.split(".")[2])
+    except:
+        pass
+    try:
+        os.mkdir(path.replace("/", "\\") + "\\" + folder)
+    except:
+        pass
 
 
 def setDatasetValues():
@@ -366,12 +400,12 @@ def setDatasetValues():
     inletRegions = 0
     eidValues = 0
     for zone in zones:
-        if ": rotated " in zone: # Delete rotated Zones
+        if ": rotated " in zone:  # Delete rotated Zones
             tecplot.active_frame().dataset.delete_zones(tecplot.active_frame().dataset.zone(zone))
         elif "WALL" in zone:
-            wallRegions = wallRegions+1
+            wallRegions = wallRegions + 1
         elif "INLET" in zone:
-            inletRegions = inletRegions+1
+            inletRegions = inletRegions + 1
     for variable in variables:
         if "EIDHS" in variable:
             eidValues = 4
@@ -384,8 +418,8 @@ def setDatasetValues():
 def icescenes():
     plot.show_contour = False
     plot.show_shade = True
-    plot.fieldmaps(wallRegions+inletRegions+4).shade.color = Color.Red
-    plot.fieldmaps(2*wallRegions+inletRegions+5).shade.color = Color.Red
+    plot.fieldmaps(wallRegions + inletRegions + 4).shade.color = Color.Red
+    plot.fieldmaps(2 * wallRegions + inletRegions + 5).shade.color = Color.Red
     savePicture("25_Ice")
     plot.show_contour = False
     plot.show_shade = False
@@ -418,10 +452,10 @@ def icescenes():
     except:
         pass
     for radius in radii:
-
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png', picturewidth, supersample=1)
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + str(radius) + '.png',
+                                picturewidth, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
@@ -457,6 +491,33 @@ def convertData():
     tecplot.data.operate.execute_equation(equation='{vx} = {V1-velocity (m/s); Velocity} - 2 * 3.14159265 *  Y * {rot}')
     tecplot.data.operate.execute_equation(equation='{vy} = {V2-velocity (m/s)} + 2 * 3.14159265 *  X * {rot}')
     tecplot.data.operate.execute_equation(equation='{vmag} =  sqrt({vx}**2+ {vy}**2+ {V3-velocity (m/s)}**2)')
+    tecplot.data.operate.execute_equation(equation='{Normal} =  sqrt({vx}**2+ {vy}**2+ {V3-velocity (m/s)}**2)')
+    tecplot.data.operate.execute_equation(equation='{Chordangle} = atan({Y Grid K Unit Normal} / if(0.01<=abs({Z Grid K Unit Normal}),{Z Grid K Unit Normal},0.01))*57.29577951')
+
+
+def saveData():
+    print('Save Data')
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               33 + turbVariables + eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("/",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               30 + turbVariables + eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\PZ.txt' + "'")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
+                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
+                                               36 + turbVariables + eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
+    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
+                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
 
 
 def prepareScene():
@@ -466,7 +527,7 @@ def prepareScene():
 
     tecplot.active_frame().plot().frame.width = 14
     tecplot.active_frame().plot().frame.height = 8
-    tecplot.active_frame().plot().frame.position=(0,0)
+    tecplot.active_frame().plot().frame.position = (0, 0)
 
     # Hide Inlets
     i = 1
@@ -474,9 +535,9 @@ def prepareScene():
         tecplot.active_frame().plot().fieldmaps(i).show = False
         i = i + 1
 
-    i = inletRegions+1
+    i = inletRegions + 1
 
-    while (i <= inletRegions+wallRegions):
+    while (i <= inletRegions + wallRegions):
         tecplot.active_frame().plot().fieldmaps(i).mesh.line_thickness = 0.05
         i = i + 1
 
@@ -488,7 +549,6 @@ def prepareScene():
     # Rotate Data
 
     if dataset.variable('X').min() > -0.01 and rotationRate != 0:
-
         print('\tPeriodic boundary detected')
         tecplot.macro.execute_command('''$!AxialDuplicate 
           ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
@@ -517,7 +577,7 @@ def prepareSceneIceGrids():
 
     tecplot.active_frame().plot().frame.width = 14
     tecplot.active_frame().plot().frame.height = 8
-    tecplot.active_frame().plot().frame.position=(0,0)
+    tecplot.active_frame().plot().frame.position = (0, 0)
 
     # Hide Inlets
     i = 1
@@ -525,9 +585,9 @@ def prepareSceneIceGrids():
         plot.fieldmaps(i).show = False
         i = i + 1
 
-    i = inletRegions+1
+    i = inletRegions + 1
 
-    while i <= inletRegions+wallRegions:
+    while i <= inletRegions + wallRegions:
         plot.fieldmaps(i).mesh.line_thickness = 0.05
         i = i + 1
 
@@ -566,7 +626,7 @@ def prepareSceneIce():
 
     tecplot.active_frame().plot().frame.width = 14
     tecplot.active_frame().plot().frame.height = 8
-    tecplot.active_frame().plot().frame.position=(0,0)
+    tecplot.active_frame().plot().frame.position = (0, 0)
     tecplot.active_frame().plot_type = PlotType.Cartesian3D
     plot = tecplot.active_frame().plot()
 
@@ -574,7 +634,7 @@ def prepareSceneIce():
         print('\tPeriodic boundary detected')
         # Rotate Data
         tecplot.macro.execute_command('''$!AxialDuplicate 
-          ZoneList =  [''' + str( 1) + '-' + str(wallRegions) + ''']
+          ZoneList =  [''' + str(1) + '-' + str(wallRegions) + ''']
           Angle = 180
           NumDuplicates = 1
           XVar = 1
@@ -593,8 +653,8 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder, sl
         tecplot.active_frame().plot_type = PlotType.Cartesian3D
         plot = tecplot.active_frame().plot()
         plot.contour(0).variable = variable
-        plot.contour(0).colormap_name=colormap
-        plot.contour(0).colormap_filter.reversed=reverse
+        plot.contour(0).colormap_name = colormap
+        plot.contour(0).colormap_filter.reversed = reverse
 
         if maxc is not None:
             plot.contour(0).levels.reset_levels(np.linspace(minc, maxc, spacing))
@@ -609,9 +669,44 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder, sl
             slices(sliceFolder)
 
 
+def mesh():
+    global picturewidth
+    print('Mesh')
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = True
+    picturewidth = picturewidth * 2
+    savePicture("50_Mesh")
+    picturewidth = picturewidth / 2
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+
+
+def IsoTurb():
+    print('turbulent viscosity (kg/m s)')
+    plot.contour(0).variable = dataset.variable('turbulent viscosity (kg/m s)')
+    plot.show_contour = False
+    plot.show_shade = True
+    plot.show_mesh = False
+    plot.show_isosurfaces = False
+    plot.show_isosurfaces = True
+    plot.isosurface(0).isosurface_values[0] = 2e-05
+    plot.isosurface(0).contour.show = True
+    plot.isosurface(0).contour.show = False
+    plot.isosurface(0).shade.show = False
+    plot.isosurface(0).shade.show = True
+    plot.isosurface(0).shade.color = Color.Red
+    savePicture("08_IsoTurb")
+    plot.show_contour = True
+    plot.show_shade = False
+    plot.show_mesh = False
+    plot.show_isosurfaces = False
+
+
 def savePicture(name):
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\' + name )
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\' + name)
     except:
         pass
     for view in views:
@@ -621,7 +716,7 @@ def savePicture(name):
         plot.view.theta = view[6]
         plot.view.alpha = view[7]
 
-        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\' + name + '\\' + view[0] + '.png',
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\' + name + '\\' + str(view[0]) + '.png',
                                 width=picturewidth,
                                 region=ExportRegion.AllFrames,
                                 supersample=1,
@@ -629,7 +724,6 @@ def savePicture(name):
 
 
 def slices(name):
-
     # Turn on slice and get handle to slice object
     plot.show_slices = True
     plot.show_contour = False
@@ -646,84 +740,26 @@ def slices(name):
     slice_0.contour.show = True
 
     plot.view.width = 0.144183
-    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.position = (8.66775, 0.00233312, -0.0198978)
     plot.view.psi = 90.00
     plot.view.theta = -90.00
     plot.view.alpha = 180.00
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\' + name )
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\' + name)
     except:
         pass
     for radius in radii:
-
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+name+'\\' + str(radius) + '.png', picturewidth, supersample=1)
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\' + name + '\\' + str(radius) + '.png',
+                                picturewidth, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
 
 
-def saveData():
-    print('Save Data')
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               33 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("/",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               30 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\PZ.txt' + "'")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="Integrate [" + str(inletRegions + 2) + '-' + str(
-                                               inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
-                                               36 + turbVariables+eidValues) + " Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' IRange={MIN =1 MAX = 0 SKIP = 1} JRange={MIN =1 MAX = 0 SKIP = 1} KRange={MIN =1 MAX = 0 SKIP = 1} PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0")
-    tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command="SaveIntegrationResults FileName='" + path.replace("\\",
-                                                                                                      "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
-
-
-def mesh():
-    print('Mesh')
-    plot.show_contour = False
-    plot.show_shade = True
-    plot.show_mesh = True
-    savePicture("50_Mesh")
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.show_mesh = False
-
-
-def IsoTurb():
-    print('turbulent viscosity (kg/m s)')
-    plot.contour(0).variable= dataset.variable('turbulent viscosity (kg/m s)')
-    plot.show_contour = False
-    plot.show_shade = True
-    plot.show_mesh = False
-    plot.show_isosurfaces=False
-    plot.show_isosurfaces=True
-    plot.isosurface(0).isosurface_values[0]=2e-05
-    plot.isosurface(0).contour.show=True
-    plot.isosurface(0).contour.show=False
-    plot.isosurface(0).shade.show=False
-    plot.isosurface(0).shade.show=True
-    plot.isosurface(0).shade.color=Color.Red
-    savePicture("08_IsoTurb")
-    plot.show_contour = True
-    plot.show_shade = False
-    plot.show_mesh = False
-    plot.show_isosurfaces=False
-
-
 def meshslices():
-
     # Turn on slice and get handle to slice object
     plot.show_slices = True
     plot.show_contour = False
@@ -737,37 +773,37 @@ def meshslices():
     slice_0.show_intermediate_slices = False
     slice_0.orientation = SliceSurface.XPlanes
     # Turn on contours of X Velocity on the slice
-    slice_0.contour.show=False
-    slice_0.mesh.show=True
+    slice_0.contour.show = False
+    slice_0.mesh.show = True
 
     plot.view.width = 0.144183
-    plot.view.position = (8.66775, 0.00233312,-0.0198978)
+    plot.view.position = (8.66775, 0.00233312, -0.0198978)
     plot.view.psi = 90.00
     plot.view.theta = -90.00
     plot.view.alpha = 180.00
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\49_Mesh' )
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\49_Mesh')
     except:
         pass
     for radius in radii:
-
         text = frame.add_text(str(radius), (50, 95))
         plot.slice(0).origin.x = radiusPropeller * radius / 100
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\49_Mesh\\' + str(radius) + '.png', picturewidth*2, supersample=1)
+        tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\49_Mesh\\' + str(radius) + '.png',
+                                picturewidth * 2, supersample=1)
         text.text_string = ""
 
     plot.show_slices = False
-    slice_0.contour.show=True
-    slice_0.mesh.show=False
+    slice_0.contour.show = True
+    slice_0.mesh.show = False
 
 
-def setupslices(variable, foldername, min, max,reverse):
+def setupslices(variable, foldername, min, max, reverse):
     print('Chordwise plots of ' + variable)
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
-        os.mkdir(path.replace("/","\\") + '\\' + folder + '\\'+foldername)
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\' + foldername)
     except:
         pass
     for radius in radii:
@@ -826,28 +862,30 @@ def setupslices(variable, foldername, min, max,reverse):
         plot.axes.y_axis(0).max = max
 
         # export image of pressure coefficient as a function of x/c
-        tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
+        tecplot.export.save_png(
+            path.replace("/", "\\") + '\\' + folder + '\\' + foldername + '\\' + str(radius) + '.png', picturewidth,
+            supersample=1)
         text.text_string = ""
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 
 # Create wrapping distance plots
 def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
-    print('Wrapping distance plots of '+variable)
+    print('Wrapping distance plots of ' + variable)
 
     # Check if variable is in dataset
-    variabletest = dataset.variable(variable)
-    if variabletest is not None:
+    variableTest = dataset.variable(variable)
+    if variableTest is not None:
         if variable2 is not None:
-            variabletest = dataset.variable(variable2)
-            if variabletest is None:
+            variableTest = dataset.variable(variable2)
+            if variableTest is None:
                 variable2 = None
 
         frame.plot_type = tecplot.constant.PlotType.XYLine
 
         # make Folder
         try:
-            os.mkdir(path.replace("/","\\") + '\\' + folder + '\\'+foldername)
+            os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\' + foldername)
         except:
             pass
 
@@ -874,23 +912,23 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             extracted_z = extracted_slice.values('Z')
             extracted_variable = extracted_slice.values(variable)
 
-
             # copy of data as a numpy array
             x = extracted_x.as_numpy_array()
             y = extracted_y.as_numpy_array()
             z = extracted_z.as_numpy_array()
             var = extracted_variable.as_numpy_array()
+            var2 = np.empty(z.size)
             if variable2 is not None:
                 extracted_variable2 = extracted_slice.values(variable2)
                 var2 = extracted_variable2.as_numpy_array()
 
-            #create empty arrays for later population
-            arr = np.empty(z.size) # Array for the wrapping distance
-            dist = np.empty(z.size) # Array for the distance between points
-            i = 0 # iteration variable
+            # create empty arrays for later population
+            arr = np.empty(z.size)  # Array for the wrapping distance
+            dist = np.empty(z.size)  # Array for the distance between points
+            i = 0  # iteration variable
 
             # Sort the point along the line, starting from the first element
-            while i < z.size-1:
+            while i < z.size - 1:
 
                 for idx, value in np.ndenumerate(z):
                     if idx[0] > i:
@@ -899,43 +937,43 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                         dist[idx[0]] = 100
                 pos = np.argmin(dist)
 
-                y[i+1], y[pos] = y[pos], y[i+1]
-                z[i+1], z[pos] = z[pos], z[i+1]
-                var[i+1], var[pos] = var[pos], var[i+1]
+                y[i + 1], y[pos] = y[pos], y[i + 1]
+                z[i + 1], z[pos] = z[pos], z[i + 1]
+                var[i + 1], var[pos] = var[pos], var[i + 1]
                 if variable2 is not None:
                     var2[i + 1], var2[pos] = var2[pos], var2[i + 1]
-                i = i+1
+                i = i + 1
 
             # Integrate the distance along the line
             for idx, value in np.ndenumerate(z):
                 if idx[0] > 0:
-                    arr[idx[0]] = math.sqrt((y[idx[0]]-y[idx[0]-1])**2+(z[idx[0]]-z[idx[0]-1])**2)+arr[idx[0]-1]
+                    arr[idx[0]] = math.sqrt((y[idx[0]] - y[idx[0] - 1]) ** 2 + (z[idx[0]] - z[idx[0] - 1]) ** 2) + arr[
+                        idx[0] - 1]
                 else:
-                    arr[idx[0]] =0
+                    arr[idx[0]] = 0
 
             # Find the starting point and fix the orientation of the line
             i = 0
-            maxd=0
-            maxind1=0
-            maxind2=0
-            while i < z.size-1:
+            maxd = 0
+            maxind1 = 0
+            maxind2 = 0
+            while i < z.size - 1:
 
                 for idx, value in np.ndenumerate(z):
-                        dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
+                    dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
 
-                if dist.max() > maxd:
-                     maxind1 = i
-                     maxind2 = np.argmax(dist)
-                     maxd=dist.max()
+                if dist.max(initial=-100000000) > maxd:
+                    maxind1 = i
+                    maxind2 = np.argmax(dist)
+                    maxd = dist.max(initial=-100000000)
 
-                i = i+1
-
+                i = i + 1
 
             if y[maxind1] < y[maxind2]:
-                arr = arr-arr[maxind1]
+                arr = arr - arr[maxind1]
 
                 try:
-                    arr = np.append(arr[maxind2:arr.size] - (arr.max()-arr.min()), arr[0:maxind2])
+                    arr = np.append(arr[maxind2:arr.size] - (arr.max() - arr.min()), arr[0:maxind2])
                     z = np.append(z[maxind2:z.size], z[0:maxind2])
                     var = np.append(var[maxind2:z.size], var[0:maxind2])
                     if variable2 is not None:
@@ -962,11 +1000,12 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 except:
                     print("Error2")
                 try:
-                    if z[maxind1] > z[maxind1+1]:
+                    if z[maxind1] > z[maxind1 + 1]:
                         arr = -arr
                 except:
                     print("Error")
 
+            arr = arr / maxd
             # Create new zone with the line and the results
             zone = dataset.add_ordered_zone('variable', z.size)
             zone.values('x')[:] = arr
@@ -975,14 +1014,12 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             extracted_x[:] = arr
             plot.delete_linemaps()
 
-
             # create line plot from extracted zone data
             linemap = plot.add_linemap(
                 name=variable,
                 zone=zone,
                 x=dataset.variable('x'),
                 y=dataset.variable('y'))
-
 
             # overlay result on plot in upper right corner
             text = frame.add_text("Position: " + str(radius), (50, 95))
@@ -1000,18 +1037,17 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
             tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
             # tecplot.active_frame().plot().axes.area.left = 15
             tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
-            tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [m]'
-
+            tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [s/c]'
 
             if not reverse:
-                textmax = frame.add_text("Max: " +str(var.max()), (10, 95))
+                textmax = frame.add_text("Max: " + str(var.max(initial=-10000000000000)), (10, 95))
             else:
-                textmax = frame.add_text("Min: " +str(var.min()), (10, 95))
+                textmax = frame.add_text("Min: " + str(var.min(initial=1000000000000)), (10, 95))
             file_object = open(path + '/' + folder + '/Plots/out.csv', 'a+')
-            #file_object.write('\n' + variable+","+pos+'max'+var.max())
-            #file_object.write('\n' + variable+","+pos+'min'+var.min())
-            file_object.write("\n%s,%s,max,%s"%(variable, str(radius),var.max()))
-            file_object.write("\n%s,%s,min,%s"%(variable, str(radius),var.min()))
+            # file_object.write('\n' + variable+","+pos+'max'+var.max())
+            # file_object.write('\n' + variable+","+pos+'min'+var.min())
+            file_object.write("\n%s,%s,max,%s" % (variable, str(radius), var.max(initial=-10000000000000)))
+            file_object.write("\n%s,%s,min,%s" % (variable, str(radius), var.min(initial=100000000000)))
             plot.legend.show = False
 
             if variable2 is not None:
@@ -1032,15 +1068,17 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 plot.legend.show = True
                 plot.legend.position = (90, 88)
                 plot.legend.anchor_alignment = AnchorAlignment.MiddleRight
-                textmax.text_string = ("Max: " + str(var.max()) + "\nMax: "+ str(var2.max()))
-                file_object.write("\n%s,%s,max,%s"%(variable2, str(radius),var2.max()))
-                file_object.write("\n%s,%s,min,%s"%(variable2, str(radius),var2.min()))
-                #file_object.write('\n'+ variable2+","+pos+'max'+var2.max())
-                #file_object.write('\n'+ variable2+","+pos+'min'+var2.min())
+                textmax.text_string = ("Max: " + str(var.max(initial=-10000000000)) + "\nMax: " + str(var2.max(initial=-10000000000)))
+                file_object.write("\n%s,%s,max,%s" % (variable2, str(radius), var2.max(initial=-10000000000)))
+                file_object.write("\n%s,%s,min,%s" % (variable2, str(radius), var2.min(initial=10000000000)))
+                # file_object.write('\n'+ variable2+","+pos+'max'+var2.max())
+                # file_object.write('\n'+ variable2+","+pos+'min'+var2.min())
 
             plot.view.fit()
-            plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
-            plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
+            plot.axes.x_axis(0).min = -max(arr.max(initial=-10000000000), -arr.min(initial=10000000000))
+            plot.axes.x_axis(0).max = max(arr.max(initial=-10000000000), -arr.min(initial=-10000000000))
+            plot.axes.x_axis(0).min = -1
+            plot.axes.x_axis(0).max = 1
 
             if miny is not None:
                 plot.axes.y_axis(0).min = miny
@@ -1049,18 +1087,212 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 plot.axes.y_axis(0).max = maxy
 
             # export image of pressure coefficient as a function of x/c
-            tecplot.export.save_png(path.replace("/","\\") + '\\' + folder + '\\'+foldername+'\\' + str(radius) + '.png', picturewidth, supersample=1)
+            tecplot.export.save_png(
+                path.replace("/", "\\") + '\\' + folder + '\\' + foldername + '\\' + str(radius) + '.png', picturewidth,
+                supersample=1)
             text.text_string = ""
             textmax.text_string = ""
             file_object.close()
+            tecplot.active_frame().dataset.delete_zones(zone)
 
             # tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+
+def curvature(foldername, miny, maxy, reverse):
+    print('Wrapping distance plots of curvature')
+
+    frame.plot_type = tecplot.constant.PlotType.XYLine
+
+    # make Folder
+    try:
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\' + foldername)
+    except:
+        pass
+
+    # Loop over all radii for the plot creation
+    for radius in radii:
+
+        tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+        # extract an arbitrary slice from the surface data on the propeller
+        extracted_slice = tecplot.data.extract.extract_slice(
+            origin=(radiusPropeller * radius / 100, 0, 0),
+            normal=(1, 0, 0),
+            source=tecplot.constant.SliceSource.SurfaceZones,
+            dataset=dataset)
+
+        tecplot.active_frame().plot_type = PlotType.XYLine
+        plot = frame.plot()
+        plot.delete_linemaps()
+        extracted_slice.name = str(radius)
+
+        # get variables from slice
+        extracted_y = extracted_slice.values('y')
+        extracted_x = extracted_slice.values('X')
+        extracted_z = extracted_slice.values('Z')
+
+        # copy of data as a numpy array
+        x = extracted_x.as_numpy_array()
+        y = extracted_y.as_numpy_array()
+        z = extracted_z.as_numpy_array()
+        var = np.empty(z.size)  # Array for the wrapping distance= extracted_variable.as_numpy_array()
+
+        var[0] = 0
+
+        # create empty arrays for later population
+        arr = np.empty(z.size)  # Array for the wrapping distance
+        dist = np.empty(z.size)  # Array for the distance between points
+        i = 0  # iteration variable
+
+        # Sort the point along the line, starting from the first element
+        while i < z.size - 1:
+
+            for idx, value in np.ndenumerate(z):
+                if idx[0] > i:
+                    dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
+                else:
+                    dist[idx[0]] = 100
+            pos = np.argmin(dist)
+
+            y[i + 1], y[pos] = y[pos], y[i + 1]
+            z[i + 1], z[pos] = z[pos], z[i + 1]
+
+            i = i+1
+
+        # Integrate the distance along the line
+        for idx, value in np.ndenumerate(z):
+            if idx[0] > 0:
+                arr[idx[0]] = math.sqrt((y[idx[0]] - y[idx[0] - 1]) ** 2 + (z[idx[0]] - z[idx[0] - 1]) ** 2) + arr[
+                    idx[0] - 1]
+            else:
+                arr[idx[0]] = 0
+
+        # Find the starting point and fix the orientation of the line
+        i = 0
+        maxd = 0
+        maxind1 = 0
+        maxind2 = 0
+        while i < z.size - 1:
+
+            for idx, value in np.ndenumerate(z):
+                dist[idx[0]] = math.sqrt((y[idx[0]] - y[i]) ** 2 + (z[idx[0]] - z[i]) ** 2)
+
+            if dist.max(initial=-10000000000) > maxd:
+                maxind1 = i
+                maxind2 = np.argmax(dist)
+                maxd = dist.max(initial=-10000000000)
+
+            i = i + 1
+
+        if y[maxind1] < y[maxind2]:
+            arr = arr - arr[maxind1]
+
+            try:
+                arr = np.append(arr[maxind2:arr.size] - (arr.max(initial=-10000000000) - arr.min(initial=10000000000)), arr[0:maxind2])
+                z = np.append(z[maxind2:z.size], z[0:maxind2])
+            except:
+                print("Error1")
+                print(maxind2)
+                print(z.size)
+            try:
+                if z[maxind2] > z[maxind2 + 1]:
+                    arr = -arr
+                    print("Flip Plot")
+            except:
+                print("Error")
+        else:
+            arr = arr - arr[maxind2]
+
+            try:
+                arr = np.append(arr[maxind1:arr.size], arr[0:maxind1] + arr.max() - arr.min())
+                z = np.append(z[maxind1:z.size], z[0:maxind1])
+            except:
+                print("Error2")
+            try:
+                if z[maxind1] > z[maxind1 + 1]:
+                    arr = -arr
+            except:
+                print("Error")
+
+        i = 1
+        while i < z.size - 1:
+            area = (y[i] - y[i - 1]) * (z[i + 1] - z[i - 1]) - (z[i] - z[i - 1]) * (y[i + 1] - y[i - 1])
+            area = (y[i-1] * (z[i]-z[i + 1]) + y[i] * (z[i + 1]-z[i - 1]) + y[i + 1] * (z[i - 1]-z[i]))/2
+
+            a = math.sqrt((y[i] - y[i + 1]) ** 2 + (z[i] - z[i + 1]) ** 2)
+            b = math.sqrt((y[i] - y[i - 1]) ** 2 + (z[i] - z[i - 1]) ** 2)
+            c = math.sqrt((y[i - 1] - y[i + 1]) ** 2 + (z[i - 1] - z[i + 1]) ** 2)
+
+            var[i] = 4 * area / (a * b * c)
+
+            i = i + 1
+
+        arr = arr / maxd
+        # Create new zone with the line and the results
+        zone = dataset.add_ordered_zone('variable', z.size)
+        zone.values('x')[:] = arr
+        zone.values('y')[:] = var
+
+        extracted_x[:] = arr
+        plot.delete_linemaps()
+
+        # create line plot from extracted zone data
+        linemap = plot.add_linemap(
+            name="Curvature",
+            zone=zone,
+            x=dataset.variable('x'),
+            y=dataset.variable('y'))
+
+        # overlay result on plot in upper right corner
+        text = frame.add_text("Position: " + str(radius), (50, 95))
+        text.anchor = TextAnchor.Center
+        # set style of linemap plot
+        linemap.line.color = tecplot.constant.Color.Blue
+        linemap.line.line_thickness = 0.2
+        linemap.y_axis.reverse = reverse
+
+        # update axes limits to show data
+        plot.view.fit()
+        tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
+        tecplot.active_frame().plot().axes.y_axis(0).title.title_mode = AxisTitleMode.UseText
+        tecplot.active_frame().plot().axes.y_axis(0).title.text = "Curvature"
+        tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
+        # tecplot.active_frame().plot().axes.area.left = 15
+        tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
+        tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Wrapping distance [s/c]'
+
+        if not reverse:
+            textmax = frame.add_text("Max: " + str(var.max(initial=-10000000000)), (10, 95))
+        else:
+            textmax = frame.add_text("Min: " + str(var.min(initial=10000000000)), (10, 95))
+        plot.legend.show = False
+
+        plot.view.fit()
+        plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
+        plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
+        plot.axes.x_axis(0).min = -1
+        plot.axes.x_axis(0).max = 1
+
+        if miny is not None:
+            plot.axes.y_axis(0).min = miny
+
+        if maxy is not None:
+            plot.axes.y_axis(0).max = maxy
+
+        # export image of pressure coefficient as a function of x/c
+        tecplot.export.save_png(
+            path.replace("/", "\\") + '\\' + folder + '\\' + foldername + '\\' + str(radius) + '.png', picturewidth,
+            supersample=1)
+        text.text_string = ""
+        textmax.text_string = ""
+        tecplot.active_frame().dataset.delete_zones(zone)
+
+        # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 
 # Open File
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
-
 
 searchFile(path)
 
@@ -1074,7 +1306,7 @@ for File in fensapparfiles:
             rotationRate = abs(float(line.split(' ')[2]))
             print(rotationRate)
         if "FSP_FREESTREAM_TEMPERATURE" in line:
-            temperature = abs(float(line.split(' ')[2]))-273.15
+            temperature = abs(float(line.split(' ')[2])) - 273.15
             print(temperature)
         if "GLB_FILE_GRID" in line:
             testString = os.path.join(path, line.split(' ')[2].replace("\"", "").replace("\n", ""))
@@ -1100,11 +1332,11 @@ if not parameterFile:
     root = tkinter.Tk()
     root.withdraw()
     a = simpledialog.askstring(title="Input",
-                              prompt="What is the Temperature:")
+                               prompt="What is the Temperature:")
     temperature = float(a)
     root.withdraw()
     a = simpledialog.askstring(title="Input",
-                              prompt="What is the Rotation Rate:")
+                               prompt="What is the Rotation Rate:")
     rotationRate = float(a)
 
 createdatfile()
@@ -1114,8 +1346,7 @@ tecplot.new_layout()
 frame = tecplot.active_frame()
 plot = frame.plot()
 dataset = []
-createcplotFile()
+createTecplotFile()
 searchFile(path)
 
 mainRun()
-
