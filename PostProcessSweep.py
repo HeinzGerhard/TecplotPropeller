@@ -43,9 +43,11 @@ inletRegions = 2  # inlet regions, automatically detected
 rotationRate = 3500  # Rotation Rate, automatically detected
 velocity = 10 # Reference Velocity, automatically detected
 temperature = -5  # Temperature, automatically detected
+pressure = 0  # Pressure, automatically detected
 radiusPropeller = 21 * 0.0254 / 2  # Propeller radius in meter
 picturewidth = 1920 * 2  # Amount of pixels for pictures
-
+aoa =0 # Angle of attack
+runNumber =0 # RunNumber
 parameterFile = False
 
 # File Vaiables, Filled by searchFile Function
@@ -123,12 +125,14 @@ def searchFile(Folder):
     global initGrid
     global defaultsFile
     global sweepFolders
+    global sweepResultsArray
 
     fensapSolutions = []
     grids = []
     fensaptecplotFiles = []
     fensapdatFiles = []
     sweepFolders = []
+    sweepResultsArray = []
     defaultsFile = ""
     hasinitGrid = False
     cht3D = False
@@ -141,10 +145,11 @@ def searchFile(Folder):
                     #fensapSolutions.append(os.path.join(root, directory, "soln")) # Absolute File Paths
                     fensapSolutions.append(os.path.join(directory, "soln")) # Relative File Paths
                 if os.path.isfile(os.path.join(root, directory, "soln.dat")):
-                    fensapdatFiles.append(os.path.join(root, directory, "soln.dat"))
+                    fensapdatFiles.append(os.path.join( directory, "soln.dat"))
                 if os.path.isfile(os.path.join(root, directory, "soln.plt")):
-                    fensaptecplotFiles.append(os.path.join(root, directory, "soln.plt"))
-                    sweepFolders.append(os.path.join(root, "Postpro" + directory.split(".")[1]))
+                    fensaptecplotFiles.append(os.path.join( directory, "soln.plt"))
+                    sweepFolders.append(os.path.join(root, "Postpro_" + str(float(directory[len("sweep_soln."):]))))
+                    sweepResultsArray.append(float(directory[len("sweep_soln."):]))
 
 
         for Files in files:
@@ -179,8 +184,8 @@ def insertInitialGrid():  # Insert initial grid if necessary
             firstGrid = fd.askopenfilename()
             initGrid = "Initialgrid.grid"
             os.link(firstGrid, path + "\\" + initGrid)
-        grid=os.path.join(path, initGrid) # Use  Absolute Path for grids
-        #grid=initGrid # Use Local Path for grids
+        #grid=os.path.join(path, initGrid) # Use  Absolute Path for grids
+        grid=initGrid # Use Local Path for grids
         insertInitGrid = True
 
 
@@ -188,12 +193,12 @@ def createTecplotFile():
     for i in range(len(fensapdatFiles)):
         if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat", ".plt")):
             print('Working on File ' + fensapdatFiles[i])
-            tecplot.data.load_tecplot(fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(fensapdatFiles[i].replace(".dat", ".plt"),
+            tecplot.data.load_tecplot(os.path.join(path,fensapdatFiles[i]), read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(os.path.join(path,fensapdatFiles[i].replace(".dat", ".plt")),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-            os.remove(fensapdatFiles[i])  # delete dat file to free up space on the drive
+            os.remove(os.path.join(path,fensapdatFiles[i]))  # delete dat file to free up space on the drive
 
 
 def mainRunSweep():
@@ -206,14 +211,18 @@ def mainRunSweep():
     global rotationRate
     global temperature
     global parameterFile
+    global aoa
+    global runNumber
 
     createPostProFolderSweep()
 
     for idx, File in enumerate(fensaptecplotFiles):
         print('Working on File ' + File)
+        dataset = tecplot.data.load_tecplot(os.path.join(mainpath, File), read_data_option=ReadDataOption.Replace)
         path = sweepFolders[idx]
-        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
+        aoa = sweepResultsArray[idx]
         setDatasetValues()
+        runNumber = idx
 
 
         frame = tecplot.active_frame()
@@ -227,6 +236,7 @@ def mainRunSweep():
         #setupsliceswrap('Pressure (N/m^2)', None, '30_Pressure', 95000, 106000, False)
 
         meshslices()
+
         #mesh()
         #IsoTurb()
 
@@ -236,6 +246,9 @@ def mainRunSweep():
             setupslices(slice[0], slice[1], slice[2], slice[3], slice[4])
         for slice in fensapWrapSlices:
             setupsliceswrap(slice[0], slice[1], slice[2], slice[3], slice[4], slice[5])
+
+    polar(0, 0, 0, 0)
+    polarLift(0, 0, 0, 0)
 
 
 def createPostProFolderSweep():
@@ -296,14 +309,16 @@ def convertData():
 
 def saveData():
     print('Save Data')
+    global sweepResultsArray
+
 
     writeToFile("\nvelocity,all,ref,%s" % velocity)
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
             command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(scalar_var=dataset.variable('areaint').index + 1))
 
-    total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])/2
-    print(total)
-    writeToFile("\narea,all,int,%s" % total)
+    area = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])/2
+    print('Area: %s' % area)
+    writeToFile("\narea,all,int,%s" % area)
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") + '\\\\Plots\\\\Area.txt' + "'")
@@ -311,9 +326,9 @@ def saveData():
                                            command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
                                                scalar_var=dataset.variable('taux').index + 1))
 
-    total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print(total)
-    writeToFile("\ntaux,all,int,%s" % total)
+    taux = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
+    print('taux: %s' % taux)
+    writeToFile("\ntaux,all,int,%s" % taux)
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") +'\\\\Plots\\\\TX.txt' + "'")
@@ -325,24 +340,44 @@ def saveData():
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") +'\\\\Plots\\\\TY.txt' + "'")
 
-    total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print(total)
-    writeToFile("\ntauy,all,int,%s" % total)
+    tauy = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
+    print('tauy: %s' % tauy)
+    writeToFile("\ntauy,all,int,%s" % tauy)
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
                                                scalar_var=dataset.variable('py').index + 1))
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print(total)
+    print('pressureLift: %s' % total)
     writeToFile("\npy,all,int,%s" % total)
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
                                                scalar_var=dataset.variable('px').index + 1))
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print(total)
+    print('pressureDrag: %s' % total)
     writeToFile("\npx,all,int,%s" % total)
 
+    drag = np.cos(np.radians(aoa))*taux+np.sin(np.radians(aoa))*tauy
+    lift = -np.sin(np.radians(aoa))*taux+np.cos(np.radians(aoa))*tauy
+    print('drag: %s' % drag)
+    print('lift: %s' % lift)
+    writeToFile("\nlift,all,int,%s" % lift)
+    writeToFile("\ndrag,all,int,%s" % drag)
+
+    density = pressure/(287.058*(temperature+273.15))
+    print('density: %s' % density)
+    writeToFile("\ndensity,all,int,%s" % density)
+
+    Cl = lift/((density/2)*area*velocity**2)
+    print('CL: %s' % Cl)
+    writeToFile("\ncl,all,int,%s" % Cl)
+
+    Cd = drag/((density/2)*area*velocity**2)
+    print('Cd: %s' % Cd)
+    writeToFile("\ncd,all,int,%s" % Cd)
+
+    sweepResultsArray[runNumber] = [aoa, Cl, Cd, lift, drag, area]
 
 def prepareScene():
     print('prepare Scene')
@@ -1044,6 +1079,7 @@ def curvature(foldername, miny, maxy, reverse):
             plot.axes.y_axis(0).max = maxy
 
         # export image of pressure coefficient as a function of x/c
+
         tecplot.export.save_png(
             path.replace("/", "\\") + '\\' + foldername + '\\' + str(radius) + '.png', picturewidth,
             supersample=1)
@@ -1053,6 +1089,135 @@ def curvature(foldername, miny, maxy, reverse):
 
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
+
+def polar(clmin, clmax, cdmin,cdmax):
+    print('Polar')
+
+    frame.plot_type = tecplot.constant.PlotType.XYLine
+
+    # Loop over all radii for the plot creation
+
+    # tecplot.active_frame().plot_type = PlotType.Cartesian3D
+    tecplot.active_frame().plot_type = PlotType.XYLine
+    plot = frame.plot()
+    zone = dataset.add_ordered_zone('variable', len(sweepResultsArray))
+    sorted_multi_list = sorted(sweepResultsArray, key=lambda x: x[0])
+    zone.values('x')[:] = [row[2] for row in sorted_multi_list]
+    zone.values('y')[:] = [row[1] for row in sorted_multi_list]
+    #zone.values('x')[:] = [row[2] for row in sweepResultsArray]
+    #zone.values('y')[:] = [row[1] for row in sweepResultsArray]
+
+    plot.delete_linemaps()
+
+    # create line plot from extracted zone data
+    linemap = plot.add_linemap(
+        name="Curvature",
+        zone=zone,
+        x=dataset.variable('x'),
+        y=dataset.variable('y'))
+
+    # overlay result on plot in upper right corner
+    text = frame.add_text("Position: ")
+    text.anchor = TextAnchor.Center
+    # set style of linemap plot
+    linemap.line.color = tecplot.constant.Color.Blue
+    linemap.line.line_thickness = 0.2
+
+    # update axes limits to show data
+    plot.view.fit()
+    tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
+    tecplot.active_frame().plot().axes.y_axis(0).title.title_mode = AxisTitleMode.UseText
+    tecplot.active_frame().plot().axes.y_axis(0).title.text = "Lift Coefficient [-]"
+    tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
+    # tecplot.active_frame().plot().axes.area.left = 15
+    tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
+    tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Drag Coefficient [-]'
+
+    plot.legend.show = False
+
+    plot.view.fit()
+    #plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
+    #plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
+
+
+    # export image of pressure coefficient as a function of x/c
+
+    for path in sweepFolders:
+        tecplot.export.save_png(
+            path.replace("/", "\\") + '\\' + "Plots" + '\\' + "Polar" + '.png', picturewidth,
+            supersample=1)
+    text.text_string = ""
+    tecplot.active_frame().dataset.delete_zones(zone)
+
+    textfile = open(mainpath + "\\" + "Polar.txt", "w")
+    for element in sorted_multi_list:
+        for subelement in element:
+            textfile.write(str(subelement)+",")
+        textfile.write("\n")
+    textfile.close()
+    tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+    # tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+def polarLift(clmin, clmax, cdmin,cdmax):
+    print('PolarLift')
+
+    frame.plot_type = tecplot.constant.PlotType.XYLine
+
+    # Loop over all radii for the plot creation
+
+    tecplot.active_frame().plot_type = PlotType.XYLine
+    plot = frame.plot()
+
+    zone = dataset.add_ordered_zone('variable', len(sweepResultsArray))
+    sorted_multi_list = sorted(sweepResultsArray, key=lambda x: x[0])
+    zone.values('x')[:] = [row[0] for row in sorted_multi_list]
+    zone.values('y')[:] = [row[1] for row in sorted_multi_list]
+
+    plot.delete_linemaps()
+
+    # create line plot from extracted zone data
+    linemap = plot.add_linemap(
+        name="Curvature",
+        zone=zone,
+        x=dataset.variable('x'),
+        y=dataset.variable('y'))
+
+    # overlay result on plot in upper right corner
+    text = frame.add_text("Position: ")
+    text.anchor = TextAnchor.Center
+    # set style of linemap plot
+    linemap.line.color = tecplot.constant.Color.Blue
+    linemap.line.line_thickness = 0.2
+
+    # update axes limits to show data
+    plot.view.fit()
+    tecplot.active_frame().plot().axes.y_axis(0).title.font.size = 2.6
+    tecplot.active_frame().plot().axes.y_axis(0).title.title_mode = AxisTitleMode.UseText
+    tecplot.active_frame().plot().axes.y_axis(0).title.text = "Lift Coefficient [-]"
+    tecplot.active_frame().plot().axes.y_axis(0).title.offset = 11
+    # tecplot.active_frame().plot().axes.area.left = 15
+    tecplot.active_frame().plot().axes.x_axis(0).title.title_mode = AxisTitleMode.UseText
+    tecplot.active_frame().plot().axes.x_axis(0).title.text = 'Angle of Attack [deg]'
+
+    plot.legend.show = False
+
+    plot.view.fit()
+    #plot.axes.x_axis(0).min = -max(arr.max(), -arr.min())
+    #plot.axes.x_axis(0).max = max(arr.max(), -arr.min())
+
+
+    # export image of pressure coefficient as a function of x/c
+
+    for path in sweepFolders:
+        tecplot.export.save_png(
+            path.replace("/", "\\") + '\\' + "Plots" + '\\' + "PolarLift" + '.png', picturewidth,
+            supersample=1)
+    text.text_string = ""
+    tecplot.active_frame().dataset.delete_zones(zone)
+    tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
+    # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
 def writeToFile(string):
     file_object = open(path + '/Plots/out.csv', 'a+')
@@ -1076,6 +1241,7 @@ def importDefautlFile(path):
 # Open File
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
+mainpath = path
 #importDefautlFile(path)
 
 projectdefaultfile = path + '/../projectdefaults.py'
@@ -1106,8 +1272,11 @@ for File in fensapparfiles:
             temperature = abs(float(line.split(' ')[2])) - 273.15
             print(temperature)
         if "FSP_FREESTREAM_VELOCITY" in line:
-            velocity = abs(float(line.split(' ')[2])) - 273.15
+            velocity = abs(float(line.split(' ')[2]))
             print(velocity)
+        if "FSP_FREESTREAM_PRESSURE" in line:
+            pressure = abs(float(line.split(' ')[2]))
+            print(pressure)
         if "GLB_FILE_GRID" in line:
             testString = os.path.join(path, line.split(' ')[2].replace("\"", "").replace("\n", ""))
             print(testString)

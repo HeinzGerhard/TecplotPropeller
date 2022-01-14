@@ -129,19 +129,19 @@ dropletWrapSlices = [
 
 ice3DScenes = [
 #   ["Variable", Colormap, reverse, Minimum Value, Maximum Value, Steps, Folder, CutviewFolder(optional)]
-    ['Mass Caught (kg/m^2s)', 'Magma', True, 0, None, 21, "22_MassCaught"],
-    ['21_Icethickness', 'Magma', True, None, None, 21, "21_Icethickness"],
-    ['Wall Temperature (C)', 'Diverging - Blue/Red', False, None, None, 21, "23_Temperature"],
-    ['Film Thickness (micron)', 'Diverging - Blue/Red', False, None, None, 21, "24_FilmThickness"],
-    ['RW Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 50000, 21, "25_RWHeatFlow"],
+    ['Mass Caught (kg/m^2s)', 'Magma', True, 0, None, 21, "22_MassCaught", None],
+    ['21_Icethickness', 'Magma', True, None, None, 21, "21_Icethickness", None],
+    ['Wall Temperature (C)', 'Diverging - Blue/Red', False, None, None, 21, "23_Temperature", None],
+    ['Film Thickness (micron)', 'Diverging - Blue/Red', False, None, None, 21, "24_FilmThickness", None],
+    ['RW Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 50000, 21, "25_RWHeatFlow", None],
     ['RW Water Droplet HF (W/m^2)', 'Diverging - Blue/Red', True, -10000, 000000, 21,
-                "27_RWWaterHeatFlow"],
-    ['FE Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 100000, 21, "26_FEHeatFlow"],
-    ['RW Film height (micron)', 'Diverging - Blue/Red', False, 0, 10, 21, "29_RW_Film_Height"],
+                "27_RWWaterHeatFlow", None],
+    ['FE Required HF (W/m^2)', 'Diverging - Blue/Red', False, 0, 100000, 21, "26_FEHeatFlow", None],
+    ['RW Film height (micron)', 'Diverging - Blue/Red', False, 0, 10, 21, "29_RW_Film_Height", None],
     ['RW Evaporation HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21,
-                "28_RWEvaporationHeatFlow"],
+                "28_RWEvaporationHeatFlow", None],
     ['RW Convection HF (W/m^2)', 'Diverging - Blue/Red', False, 0000, 5000, 21,
-                "28_RWConvectionHeatFlow"],
+                "28_RWConvectionHeatFlow", None],
 
 ]
 
@@ -166,6 +166,95 @@ iceWrapSlices = [
     ['Freezing fraction', None, '38_FrezingFraction', 0, None, False],
 ]
 
+def searchFile2D(Folder):
+    global fensapSolutions
+    global dropletSolutions
+    global iceSolutions
+    global iceGrids
+    global grids
+    global fensaptecplotFiles
+    global fensapdatFiles
+    global dropletdatFiles
+    global droplettecplotFiles
+    global icedatFiles
+    global icetecplotFiles
+    global icegridFiles
+    global hasinitGrid
+    global initGrid
+
+    fensapSolutions = []
+    dropletSolutions = []
+    iceSolutions = []
+    iceGrids = []
+    grids = []
+    fensaptecplotFiles = []
+    fensapdatFiles = []
+    dropletdatFiles = []
+    droplettecplotFiles = []
+    icedatFiles = []
+    icetecplotFiles = []
+    icegridFiles = []
+    hasinitGrid = False
+    cht3D = False
+
+    for root, dirs, files in os.walk(Folder):
+        # print('Looking in:',root)
+        for directory in dirs:
+
+            if directory == "CHT_compute":
+                cht3D = True
+
+        for File in files:
+            if File.startswith("soln.fensap.") and not File.endswith(".dat") \
+                    and not File.endswith(".disp") and not File.endswith(".plt"):
+                fensapSolutions.append(File)
+                grids.append("grid.ice." + File.split(".")[2])
+                if cht3D:  # Include Initial Grid if CHT3D Calc because there might be multi simulations without new mesh
+                    grids.append(os.path.join(path, "Initialgrid.grid"))
+            if File.startswith("droplet.drop.") and not File.endswith(".dat") \
+                    and not File.endswith(".disp") and not File.endswith(".plt"):
+                dropletSolutions.append(File)
+            if File.startswith("swimsol.ice.") and not File.endswith(".dat") \
+                    and not File.endswith(".plt"):
+                iceSolutions.append(File)
+            if File.startswith("ice.ice.") and File.endswith(".stl"):
+                iceGrids.append(File)
+            if File.endswith("soln.plt"):
+                fensaptecplotFiles.append(File)
+            if File.endswith("drop.plt"):
+                droplettecplotFiles.append(File)
+            if File.startswith("soln.fensap.") and File.endswith(".dat"):
+                fensapdatFiles.append(File)
+            if File.startswith("droplet.drop.") and File.endswith(".dat"):
+                dropletdatFiles.append(File)
+            if File.startswith("swimsol.ice.") and File.endswith(".dat"):
+                icedatFiles.append(File)
+            if File.startswith("swimsol.ice.") and File.endswith(".plt"):
+                icetecplotFiles.append(File)
+            if File.startswith("ice.grid.ice") and not File.endswith(".3dtmp"):
+                icegridFiles.append(File)
+            if File == "soln":
+                fensapSolutions.append(File)
+            if File == "droplet":
+                dropletSolutions.append(File)
+            if File == "droplet.dat":
+                dropletdatFiles.append(File)
+            if File == "swimsol":
+                iceSolutions.append(File)
+            if File == "map.grid":
+                icegridFiles.append(File)
+            if File == "swimsol.dat":
+                icedatFiles.append(File)
+            if File == "fensap.par":
+                fensapparfiles.append(File)
+            if File == "ice.par":
+                iceparfiles.append(File)
+            if File == "soln.dat":
+                fensapdatFiles.append(File)
+            if File.startswith("Initialgrid.grid"):
+                hasinitGrid = True
+                initGrid = "Initialgrid.grid"
+
 def searchFile(Folder):
     global fensapSolutions
     global dropletSolutions
@@ -181,7 +270,6 @@ def searchFile(Folder):
     global icegridFiles
     global hasinitGrid
     global initGrid
-    global defaultsFile
 
     fensapSolutions = []
     dropletSolutions = []
@@ -195,7 +283,6 @@ def searchFile(Folder):
     icedatFiles = []
     icetecplotFiles = []
     icegridFiles = []
-    defaultsFile = ""
     hasinitGrid = False
     cht3D = False
 
@@ -254,8 +341,6 @@ def searchFile(Folder):
                 iceparfiles.append(os.path.join(root, Files))
             if Files == "soln.dat":
                 fensapdatFiles.append(os.path.join(root, Files))
-            if Files == "Post.defaults":
-                defaultsFile = os.path.join(root, Files)
             if Files.startswith("Initialgrid.grid"):
                 hasinitGrid = True
                 initGrid = "Initialgrid.grid"
