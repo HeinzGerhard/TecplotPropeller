@@ -74,6 +74,96 @@ initGrid = ""
 folder = "PostPro"
 
 
+def searchFile2D(Folder):
+    global fensapSolutions
+    global dropletSolutions
+    global iceSolutions
+    global iceGrids
+    global grids
+    global fensaptecplotFiles
+    global fensapdatFiles
+    global dropletdatFiles
+    global droplettecplotFiles
+    global icedatFiles
+    global icetecplotFiles
+    global icegridFiles
+    global hasinitGrid
+    global initGrid
+
+    fensapSolutions = []
+    dropletSolutions = []
+    iceSolutions = []
+    iceGrids = []
+    grids = []
+    fensaptecplotFiles = []
+    fensapdatFiles = []
+    dropletdatFiles = []
+    droplettecplotFiles = []
+    icedatFiles = []
+    icetecplotFiles = []
+    icegridFiles = []
+    hasinitGrid = False
+    cht3D = False
+
+    for root, dirs, files in os.walk(Folder):
+        # print('Looking in:',root)
+        for directory in dirs:
+
+            if directory == "CHT_compute":
+                cht3D = True
+
+        for File in files:
+            if File.startswith("soln.fensap.") and not File.endswith(".dat") \
+                    and not File.endswith(".disp") and not File.endswith(".plt"):
+                fensapSolutions.append(File)
+                grids.append("grid.ice." + File.split(".")[2])
+                if cht3D:  # Include Initial Grid if CHT3D Calc because there might be multi simulations without new mesh
+                    grids.append(os.path.join(path, "Initialgrid.grid"))
+            if File.startswith("droplet.drop.") and not File.endswith(".dat") \
+                    and not File.endswith(".disp") and not File.endswith(".plt"):
+                dropletSolutions.append(File)
+            if File.startswith("swimsol.ice.") and not File.endswith(".dat") \
+                    and not File.endswith(".plt"):
+                iceSolutions.append(File)
+            if File.startswith("ice.ice.") and File.endswith(".stl"):
+                iceGrids.append(File)
+            if File.endswith("soln.plt"):
+                fensaptecplotFiles.append(File)
+            if File.endswith("drop.plt"):
+                droplettecplotFiles.append(File)
+            if File.startswith("soln.fensap.") and File.endswith(".dat"):
+                fensapdatFiles.append(File)
+            if File.startswith("droplet.drop.") and File.endswith(".dat"):
+                dropletdatFiles.append(File)
+            if File.startswith("swimsol.ice.") and File.endswith(".dat"):
+                icedatFiles.append(File)
+            if File.startswith("swimsol.ice.") and File.endswith(".plt"):
+                icetecplotFiles.append(File)
+            if File.startswith("ice.grid.ice") and not File.endswith(".3dtmp"):
+                icegridFiles.append(File)
+            if File == "soln":
+                fensapSolutions.append(File)
+            if File == "droplet":
+                dropletSolutions.append(File)
+            if File == "droplet.dat":
+                dropletdatFiles.append(File)
+            if File == "swimsol":
+                iceSolutions.append(File)
+            if File == "map.grid":
+                icegridFiles.append(File)
+            if File == "swimsol.dat":
+                icedatFiles.append(File)
+            if File == "fensap.par":
+                fensapparfiles.append(File)
+            if File == "ice.par":
+                iceparfiles.append(File)
+            if File == "soln.dat":
+                fensapdatFiles.append(File)
+            if File.startswith("Initialgrid.grid"):
+                hasinitGrid = True
+                initGrid = "Initialgrid.grid"
+
+
 def searchFile(Folder):
     global fensapSolutions
     global dropletSolutions
@@ -166,39 +256,68 @@ def searchFile(Folder):
 def createdatfile():
     global initGrid
 
+    insertInitialGrid()
+    if len(fensapSolutions) > 1:  # To deal with multishot simulation with an link to the original mesh --> Remove swinsol solution
+        fensapSolutions.pop(0)
     for i in range(len(fensapSolutions)):
         if not fensapdatFiles.__contains__(fensapSolutions[i] + ".dat") \
                 and not fensaptecplotFiles.__contains__(fensapSolutions[i] + ".soln.plt"):
-            insertInitialGrid()
+            fensapsolution = fensapSolutions[i]
             print("Convert " + fensapSolutions[i])
-            string = "CreateDatFiles.bat \"" + path + "\" \"" \
-                     + grids[i].replace("\\", "/") + "\" \"" + fensapSolutions[i] + "\""
-            os.system(string)
+            if len(fensapsolution.split(".")) > 1:  # To deal with multishot simulation with an link to the original mesh --> Remove swinsol solution
+
+               string = "CreateDatFiles.bat \"" + path + "\" \"" \
+                         + "grid.ice."+fensapsolution.split(".")[2] + "\" \"" + fensapSolutions[i] + "\""
+               os.system(string)
+            else:  # To deal with multishot simulation with an link to the original mesh --> Remove swinsol solution
+                string = "CreateDatFiles.bat \"" + path + "\" \"" \
+                         + grids[i].replace("\\", "/") + "\" \"" + fensapSolutions[i] + "\""
+                os.system(string)
+    if len(dropletSolutions) > 1:  # To deal with multishot simulation
+        dropletSolutions.pop(0)
     for i in range(len(dropletSolutions)):
         if not dropletdatFiles.__contains__(dropletSolutions[i] + ".dat") \
                 and not droplettecplotFiles.__contains__(dropletSolutions[i] + ".drop.plt"):
-            insertInitialGrid()
-            print("Convert " + dropletSolutions[i])
-            string = "CreateDatFilesDrop.bat \"" + path + "\" \"" \
-                     + grids[i] + "\" \"" + dropletSolutions[i] + "\""
-            os.system(string)
+            dropletSolution = dropletSolutions[i]
+            print("Convert " + dropletSolution)
+            if len(dropletSolution.split(".")) > 1:
+                string = "CreateDatFilesDrop.bat \"" + path + "\" \"" \
+                         +"grid.ice."+dropletSolution.split(".")[2] + "\" \"" + dropletSolutions[i] + "\""
+                os.system(string)
+            else:
+                string = "CreateDatFilesDrop.bat \"" + path + "\" \"" \
+                         + grids[i] + "\" \"" + dropletSolutions[i] + "\""
+                os.system(string)
+    if len(iceSolutions) > 1:  # To deal with multishot simulation with an link to the original mesh --> Remove swinsol solution
+        iceSolutions.pop(0)
     for i in range(len(iceSolutions)):
         if not icedatFiles.__contains__(iceSolutions[i] + ".dat") \
                 and not icetecplotFiles.__contains__(iceSolutions[i] + ".ice.plt"):
-            print("Convert " + iceSolutions[i])
-            string = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
-            os.system(string)
+            iceSolution = iceSolutions[i]
+            print("Convert " + iceSolution)
+
+
+            if len(iceSolution.split(".")) > 1:
+                string = "CreateDatFilesIce.bat \"" + path + "\" \"" + "ice.grid.ice."+iceSolution.split(".")[2] + "\" \"" + iceSolutions[
+                    i] + "\""
+                os.system(string)
+            else:
+                string = "CreateDatFilesIce.bat \"" + path + "\" \"" + icegridFiles[i] + "\" \"" + iceSolutions[i] + "\""
+                os.system(string)
 
 
 def insertInitialGrid():  # Insert initial grid if necessary
     global initGrid
     global insertInitGrid
+    # if len(grids) > 1: # To deal with multishot simulation with an link to the original mesh --> No need for the initial grid
+    #    insertInitGrid = True
     if not insertInitGrid:  # Check if it is necessary to insert the initial grid
         if not hasinitGrid:
             firstGrid = fd.askopenfilename()
             initGrid = "Initialgrid.grid"
             os.link(firstGrid, path + "\\" + initGrid)
-        grids.insert(0, os.path.join(path, initGrid))
+        # grids.insert(0, os.path.join(path, initGrid))  # absolute path
+        grids.insert(0, initGrid)  # local path
         insertInitGrid = True
 
 
@@ -206,30 +325,30 @@ def createTecplotFile():
     for i in range(len(fensapdatFiles)):
         if not fensaptecplotFiles.__contains__(fensapdatFiles[i].replace(".dat", ".soln.plt")):
             print('Working on File ' + fensapdatFiles[i])
-            tecplot.data.load_tecplot(fensapdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(fensapdatFiles[i].replace(".dat", ".soln.plt"),
+            tecplot.data.load_tecplot(os.path.join(path, fensapdatFiles[i]), read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(os.path.join(path, fensapdatFiles[i].replace(".dat", ".soln.plt")),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-            os.remove(fensapdatFiles[i])  # delete dat file to free up space on the drive
+            os.remove(os.path.join(path, fensapdatFiles[i]))  # delete dat file to free up space on the drive
     for i in range(len(dropletdatFiles)):
         if not droplettecplotFiles.__contains__(dropletdatFiles[i].replace(".dat", ".drop.plt")):
             print('Working on File ' + dropletdatFiles[i])
-            tecplot.data.load_tecplot(dropletdatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(dropletdatFiles[i].replace(".dat", ".drop.plt"),
+            tecplot.data.load_tecplot(os.path.join(path, dropletdatFiles[i]), read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(os.path.join(path, dropletdatFiles[i].replace(".dat", ".drop.plt")),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-            os.remove(dropletdatFiles[i])  # delete dat file to free up space on the drive
+            os.remove(os.path.join(path, dropletdatFiles[i]))  # delete dat file to free up space on the drive
     for i in range(len(icedatFiles)):
         if not icetecplotFiles.__contains__(icedatFiles[i].replace(".dat", ".ice.plt")):
             print('Working on File ' + icedatFiles[i])
-            tecplot.data.load_tecplot(icedatFiles[i], read_data_option=ReadDataOption.Replace)
-            tecplot.data.save_tecplot_plt(icedatFiles[i].replace(".dat", ".ice.plt"),
+            tecplot.data.load_tecplot(os.path.join(path, icedatFiles[i]), read_data_option=ReadDataOption.Replace)
+            tecplot.data.save_tecplot_plt(os.path.join(path, icedatFiles[i].replace(".dat", ".ice.plt")),
                                           include_text=False,
                                           include_geom=False,
                                           include_data_share_linkage=True)
-            os.remove(icedatFiles[i])  # delete dat file to free up space on the drive
+            os.remove(os.path.join(path, icedatFiles[i]))  # delete dat file to free up space on the drive
 
 
 def mainRun():
@@ -244,7 +363,7 @@ def mainRun():
 
     for File in fensaptecplotFiles:
         print('Working on File ' + File)
-        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         folder = "PostPro"
         try:
@@ -309,7 +428,7 @@ def mainRun():
         except:
             print("Warning: Error creating Plots Folder")
 
-        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         plot = frame.plot()
         setDatasetValues()
         prepareScene()
@@ -335,7 +454,7 @@ def mainRun():
             os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
             print("DEBUG: Error creating Plots Folder")
-        dataset = tecplot.data.load_tecplot(File, read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
         setupsliceswrap('Mass Caught (kg/m^2s)', None, '37_MassCaught', 0, None, False)
@@ -367,8 +486,8 @@ def mainRun():
     for File in iceGrids:
         createPostProFolder(File)
 
-        dataset = tecplot.data.load_tecplot(fensaptecplotFiles[0], read_data_option=ReadDataOption.Replace)
-        dataset = tecplot.data.load_stl(File)
+        dataset = tecplot.data.load_tecplot(os.path.join(path, fensaptecplotFiles[0]), read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_stl(os.path.join(path, File))
         setDatasetValues()
         prepareSceneIceGrids()
         icescenes()
@@ -1295,12 +1414,12 @@ def curvature(foldername, miny, maxy, reverse):
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
 
-searchFile(path)
+searchFile2D(path)
 
 for File in fensapparfiles:
     parameterFile = True
     print(File)
-    file1 = open(File, 'r')
+    file1 = open(os.path.join(path, File), 'r')
     data = file1.readlines()
     for line in data:
         if "FSP_ROTATION_VECTOR_Z" in line:
@@ -1319,7 +1438,7 @@ for File in fensapparfiles:
 
 for File in iceparfiles:
     parameterFile = True
-    file1 = open(File, 'r')
+    file1 = open(os.path.join(path, File), 'r')
     data = file1.readlines()
     for line in data:
         if "ICE_ROTATION_VECTOR_Z" in line:
