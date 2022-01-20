@@ -652,7 +652,7 @@ def icescenes():
     slice_0.show_primary_slice = True
     slice_0.show_start_and_end_slices = False
     slice_0.show_intermediate_slices = False
-    slice_0.orientation = SliceSurface.XPlanes
+    slice_0.orientation = SliceSurface.ZPlanes
     # Turn on contours of X Velocity on the slice
 
     for view in views:
@@ -671,7 +671,7 @@ def icescenes():
             plot.view.position = (cut[1],cut[2], 1)
             for radius in radii:
                 text = frame.add_text(str(radius), (50, 95))
-                plot.slice(0).origin.x = radiusPropeller * radius / 100
+                plot.slice(0).origin.z = radii
                 tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + ' ' + str(view[0]) + '.png',
                                         picturewidth, supersample=1)
                 text.text_string = ""
