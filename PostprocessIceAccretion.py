@@ -20,6 +20,7 @@ import tecplot
 from tecplot.exception import *
 from tecplot.constant import *
 import sys
+import time
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -596,11 +597,11 @@ def convertData():
     tecplot.data.operate.execute_equation(equation='{my} = Z * {px} - X * {pz}')
     tecplot.data.operate.execute_equation(equation='{mz} = X * {py} - Y * {px}')
     tecplot.data.operate.execute_equation(
-        equation='{taux} = {SF1-shear stress (Pa); Shear} - {X Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
+        equation='{taux} = -{SF1-shear stress (Pa); Shear} - {X Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
     tecplot.data.operate.execute_equation(
-        equation='{tauy} = {SF2-shear stress (Pa)} - {Y Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
+        equation='{tauy} = -{SF2-shear stress (Pa)} - {Y Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
     tecplot.data.operate.execute_equation(
-        equation='{tauz} = {SF3-shear stress (Pa)} - {Z Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
+        equation='{tauz} = -{SF3-shear stress (Pa)} - {Z Grid K Unit Normal} * ({Pressure (N/m^2)}-101325)')
     tecplot.data.operate.execute_equation(equation='{mxt} = Y * {tauz} - Z * {tauy} ')
     tecplot.data.operate.execute_equation(equation='{myt} = Z * {taux} - X * {tauz}')
     tecplot.data.operate.execute_equation(equation='{mzt} = X * {tauy} - Y * {taux}')
@@ -623,6 +624,12 @@ def saveData():
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SaveIntegrationResults FileName='" + path.replace("/",
                                                                                                       "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
+
+    total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
+    print('Trust: %s' % total)
+    writeToFile("\nlift,all,int,%s" % total)
+
+
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="Integrate [" + str(inletRegions + 2) + '-' + str(
                                                inletRegions + wallRegions + 1) + "] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar=" + str(
@@ -638,6 +645,9 @@ def saveData():
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
 
+    total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
+    print('Drag: %s' % total)
+    writeToFile("\ndrag,all,int,%s" % total)
 
 def prepareScene():
     print('prepare Scene')
@@ -1409,10 +1419,17 @@ def curvature(foldername, miny, maxy, reverse):
 
         # tecplot.active_frame().plot_type = PlotType.Cartesian3D
 
+def writeToFile(string):
+    #if os.path.isdir(path + "/"+folder+'/Plots'):
+    #    os.mkdir(path + "/"+folder+ '/Plots')
+    file_object = open(path + "/"+folder+ '/Plots/out.csv', 'a+')
+    file_object.write(string)
+    file_object.close()
 
 # Open File
 tkinter.Tk().withdraw()
 path = fd.askdirectory()
+#time.sleep(3600)
 
 searchFile2D(path)
 
