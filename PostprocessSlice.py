@@ -655,27 +655,28 @@ def icescenes():
     slice_0.orientation = SliceSurface.XPlanes
     # Turn on contours of X Velocity on the slice
 
-    plot.view.width = 0.10
-    plot.view.position = (0, 0, 1)
-    plot.view.psi = 0.00
-    plot.view.theta = 90.00
-    plot.view.alpha = -90.00
+    for view in views:
+        plot.view.width = view[1]
+        plot.view.position = (view[2], view[3], view[4])
+        plot.view.psi = view[5]
+        plot.view.theta = view[6]
+        plot.view.alpha = view[7]
 
-    try:
-        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
-    except:
-        pass
-    for cut in Cuts:
-        plot.view.width = cut[3]
-        plot.view.position = (cut[1],cut[2], 1)
-        for radius in radii:
-            text = frame.add_text(str(radius), (50, 95))
-            plot.slice(0).origin.x = radiusPropeller * radius / 100
-            tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + ' ' + str(radius) + '.png',
-                                    picturewidth, supersample=1)
-            text.text_string = ""
+        try:
+            os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
+        except:
+            pass
+        for cut in Cuts:
+            plot.view.width = cut[3]
+            plot.view.position = (cut[1],cut[2], 1)
+            for radius in radii:
+                text = frame.add_text(str(radius), (50, 95))
+                plot.slice(0).origin.x = radiusPropeller * radius / 100
+                tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + ' ' + str(view[0]) + '.png',
+                                        picturewidth, supersample=1)
+                text.text_string = ""
 
-    plot.show_slices = False
+        plot.show_slices = False
 
 
 def convertData():
