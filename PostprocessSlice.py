@@ -671,7 +671,7 @@ def icescenes():
             plot.view.position = (cut[1],cut[2], 1)
             for radius in radii:
                 text = frame.add_text(str(radius), (50, 95))
-                plot.slice(0).origin.z = radii
+                plot.slice(0).origin.z = radius
                 tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + ' ' + str(view[0]) + '.png',
                                         picturewidth, supersample=1)
                 text.text_string = ""

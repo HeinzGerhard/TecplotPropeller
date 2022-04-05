@@ -830,7 +830,6 @@ def IsoTurb():
     plot.show_contour = True
     plot.show_shade = False
     plot.show_mesh = False
-    plot.show_isosurfaces = False
 
 
 def savePicture(name):
