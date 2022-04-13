@@ -669,6 +669,11 @@ def icescenes():
 
 def icegeometryExport(state):
 
+    try:
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
+    except:
+        pass
+
     for radius in radii:
 
         idx = np.where(np.array(movement) == radius)
@@ -787,6 +792,7 @@ def icegeometryExport(state):
         tecplot.active_frame().dataset.delete_zones(zone)
 
         tecplot.active_frame().plot_type = PlotType.Cartesian3D
+
 
 def convertData():
     print('Convert Data')
