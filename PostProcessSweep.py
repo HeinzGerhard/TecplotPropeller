@@ -81,7 +81,7 @@ views = [
 ]
 
 Cuts = [
-    # ["Name", View width, X, Y, Z, Psi, Theta, Alpha]
+    # ["Name", X, Y,View width]
     ["Default",0.015,0,0.1],
     ["LeadingEdge",0.0,0,0.01],
     ["TrailingEdge",0.035,0,0.025]
@@ -1266,7 +1266,7 @@ for File in fensapparfiles:
     data = file1.readlines()
     for line in data:
         if "FSP_ROTATION_VECTOR_Z" in line:
-            rotationRate = abs(float(line.split(' ')[2]))
+            rotationRate = abs(movementfile)
             print(rotationRate)
         if "FSP_FREESTREAM_TEMPERATURE" in line:
             temperature = abs(float(line.split(' ')[2])) - 273.15

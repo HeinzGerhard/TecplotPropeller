@@ -160,7 +160,6 @@ for radius in radii:
 
     plot.view.fit()
 
-
     # export image of pressure coefficient as a function of x/c
     tecplot.export.save_png(
         saveFolder + '\\' + str(radius) + '.png', 1920,

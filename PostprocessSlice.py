@@ -77,7 +77,7 @@ views = [
 ]
 
 Cuts = [
-    # ["Name", View width, X, Y, Z, Psi, Theta, Alpha]
+    # ["Name", X, Y,View width]
     ["Default",0.015,0,0.1],
     ["LeadingEdge",0.0,0,0.01],
     ["TrailingEdge",0.035,0,0.025]
@@ -481,6 +481,33 @@ def mainRun():
     global temperature
     global parameterFile
 
+
+    for File in iceGrids:
+
+        folder = "PostPro"
+        try:
+            if str(File.split(".")[2]).isnumeric():
+                folder = "PostPro" + str(File.split(".")[2])
+        except:
+            pass
+        try:
+            os.mkdir(path.replace("/", "\\") + "\\" + folder)
+        except:
+            pass
+        try:
+            os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
+        except:
+            pass
+
+        dataset = tecplot.data.load_tecplot(os.path.join(path, fensaptecplotFiles[0]), read_data_option=ReadDataOption.Replace)
+        dataset = tecplot.data.load_stl(os.path.join(path, File))
+        frame = tecplot.active_frame()
+        plot = frame.plot()
+        setDatasetValues()
+        prepareSceneIceGrids()
+        icescenes()
+
+
     for File in fensaptecplotFiles:
         print('Working on File ' + File)
         dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
@@ -576,16 +603,6 @@ def mainRun():
         for slice in iceWrapSlices:
             setupsliceswrap(slice[0], slice[1], slice[2], slice[3], slice[4], slice[5])
 
-    for File in iceGrids:
-
-        createPostProFolder(File)
-
-        dataset = tecplot.data.load_tecplot(os.path.join(path, fensaptecplotFiles[0]), read_data_option=ReadDataOption.Replace)
-        dataset = tecplot.data.load_stl(os.path.join(path, File))
-        setDatasetValues()
-        prepareSceneIceGrids()
-        icescenes()
-
 
 def createPostProFolder(File):
     print('Working on File ' + File)
@@ -655,28 +672,29 @@ def icescenes():
     slice_0.orientation = SliceSurface.ZPlanes
     # Turn on contours of X Velocity on the slice
 
-    for view in views:
-        plot.view.width = view[1]
-        plot.view.position = (view[2], view[3], view[4])
-        plot.view.psi = view[5]
-        plot.view.theta = view[6]
-        plot.view.alpha = view[7]
+    plot.view.width = 0.10
+    plot.view.position = (0, 0, 1)
+    plot.view.psi = 0.00
+    plot.view.theta = 90.00
+    plot.view.alpha = -90.00
 
-        try:
-            os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
-        except:
-            pass
-        for cut in Cuts:
-            plot.view.width = cut[3]
-            plot.view.position = (cut[1],cut[2], 1)
-            for radius in radii:
-                text = frame.add_text(str(radius), (50, 95))
-                plot.slice(0).origin.z = radius
-                tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + ' ' + str(view[0]) + '.png',
-                                        picturewidth, supersample=1)
-                text.text_string = ""
 
-        plot.show_slices = False
+
+    try:
+        os.mkdir(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour')
+    except:
+        pass
+    for cut in Cuts:
+        plot.view.width = cut[3]
+        plot.view.position = (cut[1], cut[2], 1)
+        for radius in radii:
+            text = frame.add_text(str(radius), (50, 95))
+            plot.slice(0).origin.z = radius
+            tecplot.export.save_png(path.replace("/", "\\") + '\\' + folder + '\\45_IceContour\\' + cut[0] + '_' + str(radius) + '.png',
+                                    picturewidth, supersample=1)
+            text.text_string = ""
+
+    plot.show_slices = False
 
 
 def convertData():
@@ -824,6 +842,12 @@ def prepareSceneIceGrids():
     plot.fieldmaps(inletRegions + wallRegions + 1).show = False
     plot.fieldmaps(inletRegions + wallRegions + 2).show = False
     plot.fieldmaps(inletRegions + wallRegions + 3).show = False
+
+    # Show ice
+
+    plot.fieldmaps(dataset.zone_names.__len__()-1).show = True
+
+    plot.axes.orientation_axis.show = False
 
     if dataset.variable('X').min() > -0.01 and rotationRate != 0:
         print('\tPeriodic boundary detected')
