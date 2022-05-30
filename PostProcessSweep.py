@@ -313,8 +313,13 @@ def saveData():
 
 
     writeToFile("\nvelocity,all,ref,%s" % velocity)
+
+    #Area
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-            command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(scalar_var=dataset.variable('areaint').index + 1))
+                                           command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(scalar_var=dataset.variable('areaint').index + 1,bound1=inletRegions + 2,bound2=inletRegions + wallRegions + 1))
+
+    #tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+    #        command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(scalar_var=dataset.variable('areaint').index + 1))
 
     area = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])/2
     print('Area: %s' % area)
@@ -322,9 +327,15 @@ def saveData():
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") + '\\\\Plots\\\\Area.txt' + "'")
+
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
-                                               scalar_var=dataset.variable('taux').index + 1))
+                                           command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+                                               scalar_var=dataset.variable('taux').index + 1,
+                                               bound1=inletRegions + 2, bound2=inletRegions + wallRegions + 1))
+
+    #tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+    #                                       command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+    #                                           scalar_var=dataset.variable('taux').index + 1))
 
     taux = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
     print('taux: %s' % taux)
@@ -333,9 +344,15 @@ def saveData():
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") +'\\\\Plots\\\\TX.txt' + "'")
 
+
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
-                                               scalar_var=dataset.variable('tauy').index + 1))
+                                           command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+                                               scalar_var=dataset.variable('tauy').index + 1,
+                                               bound1=inletRegions + 2, bound2=inletRegions + wallRegions + 1))
+
+    #tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+    #                                       command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+    #                                           scalar_var=dataset.variable('tauy').index + 1))
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SaveIntegrationResults FileName='" + path.replace("\\",
                                                                                                       "\\\\") +'\\\\Plots\\\\TY.txt' + "'")
@@ -343,16 +360,26 @@ def saveData():
     tauy = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
     print('tauy: %s' % tauy)
     writeToFile("\ntauy,all,int,%s" % tauy)
+
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
-                                               scalar_var=dataset.variable('py').index + 1))
+                                           command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+                                               scalar_var=dataset.variable('py').index + 1,
+                                               bound1=inletRegions + 2, bound2=inletRegions + wallRegions + 1))
+    #tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+    #                                       command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+    #                                           scalar_var=dataset.variable('py').index + 1))
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
     print('pressureLift: %s' % total)
     writeToFile("\npy,all,int,%s" % total)
+
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
-                                           command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
-                                               scalar_var=dataset.variable('px').index + 1))
+                                           command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+                                               scalar_var=dataset.variable('px').index + 1,
+                                               bound1=inletRegions + 2, bound2=inletRegions + wallRegions + 1))
+    #tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
+    #                                       command='''Integrate [3-7] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(
+    #                                           scalar_var=dataset.variable('px').index + 1))
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
     print('pressureDrag: %s' % total)
@@ -378,6 +405,9 @@ def saveData():
     writeToFile("\ncd,all,int,%s" % Cd)
 
     sweepResultsArray[runNumber] = [aoa, Cl, Cd, lift, drag, area]
+
+
+
 
 def prepareScene():
     print('prepare Scene')
@@ -1245,7 +1275,7 @@ mainpath = path
 #importDefautlFile(path)
 
 projectdefaultfile = path + '/../projectdefaults.py'
-rundefaultfile = path + '/../rundefault.py'
+rundefaultfile = path + '/rundefault.py'
 if os.path.isfile(projectdefaultfile):
     print('Import Project Default')
     sys.path.append(path + '/../')
@@ -1266,7 +1296,7 @@ for File in fensapparfiles:
     data = file1.readlines()
     for line in data:
         if "FSP_ROTATION_VECTOR_Z" in line:
-            rotationRate = abs(movementfile)
+            rotationRate = abs(float(line.split(' ')[2]))
             print(rotationRate)
         if "FSP_FREESTREAM_TEMPERATURE" in line:
             temperature = abs(float(line.split(' ')[2])) - 273.15

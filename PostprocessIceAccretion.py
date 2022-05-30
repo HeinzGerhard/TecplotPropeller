@@ -437,7 +437,6 @@ def createTecplotFile():
 
 
 def mainRun():
-    print('Main Run')
     global folder
     global dataset
     global plot
@@ -448,6 +447,8 @@ def mainRun():
 
 
     for File in iceGrids:
+
+        print('Ice shape results of ' + File)
         folder = "PostPro"
         try:
             if str(File.split(".")[2]).isnumeric():
@@ -461,7 +462,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
-            print("DEBUG: Error creating Plots Folder")
+            pass
 
         dataset = tecplot.data.load_tecplot(os.path.join(path, fensaptecplotFiles[0]), read_data_option=ReadDataOption.Replace)
         dataset = tecplot.data.load_stl(os.path.join(path, File))
@@ -473,7 +474,7 @@ def mainRun():
 
 
     for File in fensaptecplotFiles:
-        print('Working on File ' + File)
+        print('Fensap Result of ' + File)
         dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         folder = "PostPro"
@@ -489,7 +490,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
-            print("Warning: Error creating Plots Folder")
+            pass
 
         frame = tecplot.active_frame()
         plot = frame.plot()
@@ -513,7 +514,7 @@ def mainRun():
         IsoTurb()
 
     for File in droplettecplotFiles:
-        print('Working on File ' + File)
+        print('Drop3D Results of ' + File)
         folder = "PostPro"
 
         try:  # Create required folders. In except due to error if folder exists
@@ -528,7 +529,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
-            print("Warning: Error creating Plots Folder")
+            pass
 
         dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         plot = frame.plot()
@@ -544,7 +545,7 @@ def mainRun():
 
 
     for File in icetecplotFiles:
-        print('Working on File ' + File)
+        print('Ice3D results of ' + File)
         folder = "PostPro"
         try:
             if str(File.split(".")[2]).isnumeric():
@@ -558,7 +559,7 @@ def mainRun():
         try:
             os.mkdir(path.replace("/", "\\") + "\\" + folder + "\\Plots")
         except:
-            print("DEBUG: Error creating Plots Folder")
+            pass
         dataset = tecplot.data.load_tecplot(os.path.join(path, File), read_data_option=ReadDataOption.Replace)
         setDatasetValues()
         prepareSceneIce()
@@ -569,25 +570,6 @@ def mainRun():
             setupslices(slice[0], slice[1], slice[2], slice[3], slice[4])
         for slice in iceWrapSlices:
             setupsliceswrap(slice[0], slice[1], slice[2], slice[3], slice[4], slice[5])
-
-
-
-
-
-
-
-def createPostProFolder(File):
-    print('Working on File ' + File)
-    folder = "PostPro"
-    try:
-        if str(File.split(".")[2]).isnumeric():
-            folder = "PostPro" + str(File.split(".")[2])
-    except:
-        pass
-    try:
-        os.mkdir(path.replace("/", "\\") + "\\" + folder)
-    except:
-        pass
 
 
 def setDatasetValues():
@@ -795,7 +777,7 @@ def icegeometryExport(state):
 
 
 def convertData():
-    print('Convert Data')
+    print('\nCalculate derived values')
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command="SetFieldVariables ConvectionVarsAreMomentum='F' UVarNum=6 VVarNum=7 WVarNum=8 ID1='Density' Variable1=4 ID2='NotUsed' Variable2=0")
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
@@ -829,7 +811,7 @@ def convertData():
 
 
 def saveData():
-    print('Save Data')
+    print('\nExport Thrust and drag')
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
                                            command='''Integrate [{bound1}-{bound2}] VariableOption='Scalar' XOrigin=0 YOrigin=0 ZOrigin=0 ScalarVar={scalar_var} Absolute='F' ExcludeBlanked='F' XVariable=1 YVariable=2 ZVariable=3 IntegrateOver='Cells' IntegrateBy='Zones' PlotResults='F' PlotAs='Result' TimeMin=0 TimeMax=0'''.format(scalar_var=dataset.variable('tauz').index + 1,bound1=inletRegions + 2,bound2=inletRegions + wallRegions + 1))
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
@@ -837,7 +819,7 @@ def saveData():
                                                                                                       "\\\\") + '\\\\' + folder + '\\\\Plots\\\\TZ.txt' + "'")
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print('Trust: %s' % total)
+    print('\tThrust: %s' % total)
     writeToFile("\nlift,all,int,%s" % total)
 
     tecplot.macro.execute_extended_command(command_processor_id='CFDAnalyzer4',
@@ -856,12 +838,12 @@ def saveData():
                                                                                                       "\\\\") + '\\\\' + folder + '\\\\Plots\\\\MZ.txt' + "'")
 
     total = float(frame.aux_data['CFDA.INTEGRATION_TOTAL'])
-    print('Drag: %s' % total)
+    print('\tDrag: %s' % total)
     writeToFile("\ndrag,all,int,%s" % total)
 
 
 def prepareScene():
-    print('prepare Scene')
+    print('\n\tPrepare Data for plotting')
     # Change Aspect Ratio
     tecplot.macro.execute_file('changePaperSize.mcr')
 
@@ -889,7 +871,7 @@ def prepareScene():
     # Rotate Data
 
     if dataset.variable('X').min() > -0.01 and rotationRate != 0:
-        print('\tPeriodic boundary detected')
+        print('\t\tPeriodic boundary detected')
         tecplot.macro.execute_command('''$!AxialDuplicate 
           ZoneList =  [''' + str(inletRegions + 2) + '-' + str(inletRegions + wallRegions + 1) + ''']
           Angle = 180
@@ -911,7 +893,7 @@ def prepareScene():
 
 
 def prepareSceneIceGrids():
-    print('prepare Scene')
+    #print('prepare Scene')
     # Change Aspect Ratio
     tecplot.macro.execute_file('changePaperSize.mcr')
 
@@ -1011,7 +993,7 @@ def prepareSceneIce():
 
 
 def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder, sliceFolder=""):
-    print(variableName)
+    print("\tCreate Plots of " +variableName)
     variable = dataset.variable(variableName)
     if variable is not None:
         tecplot.active_frame().plot_type = PlotType.Cartesian3D
@@ -1036,7 +1018,7 @@ def threeDScene(variableName, colormap, reverse, minc, maxc, spacing, folder, sl
 def mesh():
     global picturewidth
     tecplot.active_frame().plot_type = PlotType.Cartesian3D
-    print('Mesh')
+    print('\tCreate Mesh plots')
     plot.show_contour = False
     plot.show_shade = True
     plot.show_mesh = True
@@ -1049,7 +1031,7 @@ def mesh():
 
 
 def IsoTurb():
-    print('turbulent viscosity (kg/m s)')
+    print('\tCreateturbulent viscosity (kg/m s) plots')
     plot.contour(0).variable = dataset.variable('turbulent viscosity (kg/m s)')
     plot.show_contour = False
     plot.show_shade = True
@@ -1191,7 +1173,7 @@ def meshslices():
 
 
 def setupslices(variable, foldername, min, max, reverse):
-    print('Chordwise plots of ' + variable)
+    print('\tChordwise plots of ' + variable)
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
     try:
@@ -1263,7 +1245,7 @@ def setupslices(variable, foldername, min, max, reverse):
 
 # Create wrapping distance plots
 def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
-    print('Wrapping distance plots of ' + variable)
+    print('\tWrapping distance plots of ' + variable)
 
     # Check if variable is in dataset
     variableTest = dataset.variable(variable)
@@ -1377,7 +1359,7 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
                 try:
                     if z[maxind2] > z[maxind2 + 1]:
                         arr = -arr
-                        print("Flip Plot")
+                        #print("Flip Plot")
                 except:
                     print("Error")
             else:
@@ -1491,7 +1473,7 @@ def setupsliceswrap(variable, variable2, foldername, miny, maxy, reverse):
 
 
 def curvature(foldername, miny, maxy, reverse):
-    print('Wrapping distance plots of curvature')
+    print('\tWrapping distance plots of curvature')
 
     frame.plot_type = tecplot.constant.PlotType.XYLine
 
@@ -1589,7 +1571,7 @@ def curvature(foldername, miny, maxy, reverse):
             try:
                 if z[maxind2] > z[maxind2 + 1]:
                     arr = -arr
-                    print("Flip Plot")
+                    #print("Flip Plot")
             except:
                 print("Error")
         else:
@@ -1726,16 +1708,16 @@ searchFile2D(path)
 
 for File in fensapparfiles:
     parameterFile = True
-    print(File)
+    print("Found parameter File " + File)
     file1 = open(os.path.join(path, File), 'r')
     data = file1.readlines()
     for line in data:
         if "FSP_ROTATION_VECTOR_Z" in line:
             rotationRate = abs(float(line.split(' ')[2]))
-            print(rotationRate)
+            print("Rotation Rate: " + str(rotationRate))
         if "FSP_FREESTREAM_TEMPERATURE" in line:
             temperature = abs(float(line.split(' ')[2])) - 273.15
-            print(temperature)
+            print("Temperature: " + str(temperature))
         if "GLB_FILE_GRID" in line:
             testString = os.path.join(path, line.split(' ')[2].replace("\"", "").replace("\n", ""))
             print(testString)
@@ -1751,10 +1733,10 @@ for File in iceparfiles:
     for line in data:
         if "ICE_ROTATION_VECTOR_Z" in line:
             rotationRate = abs(float(line.split(' ')[2]))
-            print(rotationRate)
+            print("Rotation Rate: " + str(rotationRate))
         if "ICE_TEMPERATURE" in line:
             temperature = float(line.split(' ')[2])
-            print(temperature)
+            print("Temperature: " + str(temperature))
 
 if not parameterFile:
     root = tkinter.Tk()
